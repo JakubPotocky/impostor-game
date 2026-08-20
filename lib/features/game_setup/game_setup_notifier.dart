@@ -16,6 +16,8 @@ class GameSetupNotifier extends Notifier<GameSetupState> {
       timerEnabled: _repo.getTimerEnabled(),
       timerMinutes: _repo.getTimerMinutes(),
       hintsEnabled: _repo.getHintsEnabled(),
+      themeVisibilityMode: ThemeVisibilityMode
+          .values[_repo.getThemeVisibilityMode().clamp(0, 2)],
       reducedMotion: _repo.getReducedMotion(),
       suddenDeathEnabled: _repo.getSuddenDeathEnabled(),
       darkMode: _repo.getDarkMode(),
@@ -56,6 +58,11 @@ class GameSetupNotifier extends Notifier<GameSetupState> {
   void setHintsEnabled(bool enabled) {
     state = state.copyWith(hintsEnabled: enabled);
     _repo.saveHintsEnabled(enabled);
+  }
+
+  void setThemeVisibilityMode(ThemeVisibilityMode mode) {
+    state = state.copyWith(themeVisibilityMode: mode);
+    _repo.saveThemeVisibilityMode(mode.index);
   }
 
   void setReducedMotion(bool enabled) {

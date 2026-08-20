@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:impostor/core/role_assignment_service.dart';
+import 'package:impostor/features/game_setup/game_setup_state.dart';
 import 'package:impostor/features/lan_lobby/lan_session_notifier.dart';
 import 'package:impostor/features/lan_lobby/lan_session_state.dart';
 // DeviceRevealProgress used by _RevealProgressBar
@@ -20,7 +21,9 @@ class _DistributedRevealScreenState
     extends ConsumerState<DistributedRevealScreen> {
   late final List<RoleAssignment> _assignments;
   late final String _word;
+  late final String _themeName;
   late final bool _hintsEnabled;
+  late final ThemeVisibilityMode _themeVisibilityMode;
   late final String? _impostorHintWord;
   late final bool _reducedMotion;
   int _currentIndex = 0;
@@ -47,7 +50,12 @@ class _DistributedRevealScreenState
             ))
         .toList();
     _word = widget.assignmentPayload['word'] as String? ?? '';
+    _themeName = widget.assignmentPayload['themeName'] as String? ?? '';
     _hintsEnabled = widget.assignmentPayload['hintsEnabled'] as bool? ?? false;
+    final rawThemeVisibility =
+        widget.assignmentPayload['themeVisibilityMode'] as int? ?? 1;
+    _themeVisibilityMode =
+        ThemeVisibilityMode.values[rawThemeVisibility.clamp(0, 2)];
     _impostorHintWord = widget.assignmentPayload['impostorHintWord'] as String?;
     _reducedMotion =
         widget.assignmentPayload['reducedMotion'] as bool? ?? false;
@@ -159,6 +167,8 @@ class _DistributedRevealScreenState
                           playerName: assignment.playerName,
                           isImpostor: isImpostor,
                           word: word,
+                          themeName: _themeName,
+                          themeVisibilityMode: _themeVisibilityMode,
                           hintsEnabled: _hintsEnabled,
                           impostorHintWord: _impostorHintWord,
                           reducedMotion: _reducedMotion,
@@ -256,6 +266,8 @@ class _RevealCard extends StatelessWidget {
     required this.playerName,
     required this.isImpostor,
     required this.word,
+    required this.themeName,
+    required this.themeVisibilityMode,
     required this.hintsEnabled,
     required this.impostorHintWord,
     required this.reducedMotion,
@@ -264,9 +276,22 @@ class _RevealCard extends StatelessWidget {
   final String playerName;
   final bool isImpostor;
   final String word;
+  final String themeName;
+  final ThemeVisibilityMode themeVisibilityMode;
   final bool hintsEnabled;
   final String? impostorHintWord;
   final bool reducedMotion;
+
+  bool get _showTheme {
+    switch (themeVisibilityMode) {
+      case ThemeVisibilityMode.off:
+        return false;
+      case ThemeVisibilityMode.innocentsOnly:
+        return !isImpostor;
+      case ThemeVisibilityMode.everyone:
+        return true;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -313,6 +338,19 @@ class _RevealCard extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
+            if (_showTheme && themeName.trim().isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Theme: ${themeName.trim()}',
+                style: TextStyle(
+                  color: isImp
+                      ? colorScheme.onErrorContainer.withAlpha(165)
+                      : colorScheme.onPrimaryContainer.withAlpha(165),
+                  fontSize: 13,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
             if (isImp &&
                 hintsEnabled &&
                 (impostorHintWord ?? '').trim().isNotEmpty) ...[

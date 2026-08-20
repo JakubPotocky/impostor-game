@@ -208,6 +208,7 @@ class _HostLobbyScreenState extends ConsumerState<HostLobbyScreen> {
       word: word,
       themeName: theme,
       hintsEnabled: setup.hintsEnabled,
+      themeVisibilityMode: setup.themeVisibilityMode.index,
       impostorHintWord: impostorHintWord,
       reducedMotion: setup.reducedMotion,
     );
@@ -235,6 +236,7 @@ class _HostLobbyScreenState extends ConsumerState<HostLobbyScreen> {
         word: word,
         themeName: theme,
         hintsEnabled: setup.hintsEnabled,
+        themeVisibilityMode: setup.themeVisibilityMode,
         impostorHintWord: impostorHintWord,
         timerSeconds: setup.timerEnabled ? setup.timerMinutes * 60 : 0,
         isBlankRound: isBlankRound,

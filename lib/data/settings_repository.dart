@@ -10,6 +10,7 @@ class SettingsRepository {
   static const String _keyTimerEnabled = 'timerEnabled';
   static const String _keyTimerMinutes = 'timerMinutes';
   static const String _keyHintsEnabled = 'hintsEnabled';
+  static const String _keyThemeVisibilityMode = 'themeVisibilityMode';
   static const String _keyReducedMotion = 'reducedMotion';
   static const String _keySuddenDeathEnabled = 'suddenDeathEnabled';
   static const String _keyDarkMode = 'darkMode';
@@ -82,6 +83,15 @@ class SettingsRepository {
 
   Future<void> saveHintsEnabled(bool enabled) async {
     await _safeBox.put(_keyHintsEnabled, enabled);
+  }
+
+  int getThemeVisibilityMode({int defaultValue = 1}) {
+    return _safeBox.get(_keyThemeVisibilityMode, defaultValue: defaultValue)
+        as int;
+  }
+
+  Future<void> saveThemeVisibilityMode(int mode) async {
+    await _safeBox.put(_keyThemeVisibilityMode, mode);
   }
 
   bool getReducedMotion({bool defaultValue = false}) {

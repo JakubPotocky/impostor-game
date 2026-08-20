@@ -86,6 +86,7 @@ class LanSessionNotifier extends Notifier<LanSessionState> {
     required String word,
     required String themeName,
     required bool hintsEnabled,
+    required int themeVisibilityMode,
     required String? impostorHintWord,
     required bool reducedMotion,
   }) {
@@ -122,6 +123,7 @@ class LanSessionNotifier extends Notifier<LanSessionState> {
           word: word,
           themeName: themeName,
           hintsEnabled: hintsEnabled,
+          themeVisibilityMode: themeVisibilityMode,
           impostorHintWord: impostorHintWord,
           reducedMotion: reducedMotion,
         ),

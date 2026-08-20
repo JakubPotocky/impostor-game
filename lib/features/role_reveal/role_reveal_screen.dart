@@ -4,6 +4,7 @@ import 'package:impostor/core/animated_effects.dart';
 import 'package:impostor/core/feedback_service.dart';
 import 'package:impostor/core/motion.dart';
 import 'package:impostor/core/role_assignment_service.dart';
+import 'package:impostor/features/game_setup/game_setup_state.dart';
 import 'package:impostor/features/role_reveal/role_reveal_state.dart';
 import 'package:impostor/features/voting/voting_screen.dart';
 
@@ -20,6 +21,7 @@ class RoleRevealScreen extends StatefulWidget {
     this.timerSeconds = 0,
     this.isBlankRound = false,
     this.hintsEnabled = false,
+    this.themeVisibilityMode = ThemeVisibilityMode.innocentsOnly,
     this.impostorHintWord,
     this.reducedMotion = false,
     this.suddenDeathEnabled = true,
@@ -37,6 +39,9 @@ class RoleRevealScreen extends StatefulWidget {
 
   /// Whether the impostor hint should be shown.
   final bool hintsEnabled;
+
+  /// Controls who can see the current round's theme during role reveal.
+  final ThemeVisibilityMode themeVisibilityMode;
 
   /// One related single-word hint shown only to impostors.
   final String? impostorHintWord;
@@ -76,6 +81,17 @@ class _RoleRevealScreenState extends State<RoleRevealScreen>
     _setSecureFlag(true);
     _initAnimations();
     _fadeCtrl.forward();
+  }
+
+  bool _shouldShowTheme(bool isImpostor) {
+    switch (widget.themeVisibilityMode) {
+      case ThemeVisibilityMode.off:
+        return false;
+      case ThemeVisibilityMode.innocentsOnly:
+        return !isImpostor;
+      case ThemeVisibilityMode.everyone:
+        return true;
+    }
   }
 
   void _initAnimations() {
@@ -472,6 +488,17 @@ class _RoleRevealScreenState extends State<RoleRevealScreen>
                           color: Colors.green.shade300,
                         ),
                   ),
+          ),
+        ],
+        if (_shouldShowTheme(isImpostor)) ...[
+          const SizedBox(height: 10),
+          Text(
+            'Theme: ${widget.themeName}',
+            style: TextStyle(
+              fontSize: 13,
+              color: colorScheme.onSurface.withAlpha(165),
+            ),
+            textAlign: TextAlign.center,
           ),
         ],
         if (isImpostor &&

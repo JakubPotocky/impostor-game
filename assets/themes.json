@@ -1,6 +1,6 @@
-{
+﻿{
   "Animals": {
-    "en": ["Lion", "Elephant", "Shark", "Eagle", "Tiger", "Dolphin", "Panda", "Wolf", "Bear", "Penguin", "Giraffe", "Zebra", "Kangaroo", "Octopus", "Falcon"],
+    "en": ["Lion", "Elephant", "Shark", "Eagle", "Tiger", "Dolphin", "Panda", "Wolf", "Bear", "Penguin", "Giraffe", "Zebra", "Kangaroo", "Octopus", "Falcon", "Cheetah", "Koala", "Otter", "Rhino", "Moose", "Hippo", "Camel", "Peacock", "Parrot", "Cobra", "Alligator", "Raccoon", "Seal", "Lemur", "Buffalo", "Jaguar", "Meerkat", "Flamingo", "Panther", "Yak"],
     "sk": ["Lev", "Slon", "Žralok", "Orol", "Tiger", "Delfín", "Panda", "Vlk", "Medveď", "Tučniak", "Žirafa", "Zebra", "Klokan", "Chobotnica", "Sokol"],
     "da": ["Løve", "Elefant", "Haj", "Ørn", "Tiger", "Delfin", "Panda", "Ulv", "Bjørn", "Pingvin", "Giraf", "Zebra", "Kænguru", "Blæksprutte", "Falk"],
     "de": ["Löwe", "Elefant", "Hai", "Adler", "Tiger", "Delfin", "Panda", "Wolf", "Bär", "Pinguin", "Giraffe", "Zebra", "Känguru", "Krake", "Falke"],
@@ -8,7 +8,7 @@
     "zh": ["狮子", "大象", "鲨鱼", "鹰", "老虎", "海豚", "熊猫", "狼", "熊", "企鹅", "长颈鹿", "斑马", "袋鼠", "章鱼", "猎鹰"]
   },
   "Food": {
-    "en": ["Pizza", "Sushi", "Burger", "Pasta", "Tacos", "Croissant", "Ramen", "Steak", "Pancake", "Chocolate", "Curry", "Falafel", "Dumpling", "Paella", "Cheesecake"],
+    "en": ["Pizza", "Sushi", "Burger", "Pasta", "Tacos", "Croissant", "Ramen", "Steak", "Pancake", "Chocolate", "Curry", "Falafel", "Dumpling", "Paella", "Cheesecake", "Burrito", "Lasagna", "Noodles", "Waffle", "Muffin", "Brownie", "Sausage", "Omelet", "Bagel", "Nachos", "Kebab", "Risotto", "Gnocchi", "Samosa", "Pretzel", "Donut", "Bacon", "Popcorn", "Cupcake", "Pudding"],
     "sk": ["Pizza", "Suši", "Burger", "Cestoviny", "Tacos", "Croissant", "Ramen", "Steak", "Palacinka", "Čokoláda", "Kari", "Falafel", "Knedľa", "Paella", "Cheesecake"],
     "da": ["Pizza", "Sushi", "Burger", "Pasta", "Tacos", "Croissant", "Ramen", "Bøf", "Pandekage", "Chokolade", "Karry", "Falafel", "Dumpling", "Paella", "Cheesecake"],
     "de": ["Pizza", "Sushi", "Burger", "Pasta", "Tacos", "Croissant", "Ramen", "Steak", "Pfannkuchen", "Schokolade", "Curry", "Falafel", "Knödel", "Paella", "Käsekuchen"],
@@ -16,7 +16,7 @@
     "zh": ["披萨", "寿司", "汉堡", "意面", "墨西哥卷饼", "羊角面包", "拉面", "牛排", "煎饼", "巧克力", "咖喱", "沙拉三明治", "饺子", "海鲜饭", "芝士蛋糕"]
   },
   "Countries": {
-    "en": ["France", "Japan", "Brazil", "Canada", "Egypt", "Australia", "Mexico", "India", "Germany", "Italy", "Argentina", "Thailand", "Norway", "Kenya", "Peru"],
+    "en": ["France", "Japan", "Brazil", "Canada", "Egypt", "Australia", "Mexico", "India", "Germany", "Italy", "Argentina", "Thailand", "Norway", "Kenya", "Peru", "Sweden", "Chile", "Morocco", "Vietnam", "Iceland", "Portugal", "Greece", "Turkey", "Colombia", "Poland", "South Korea", "New Zealand", "South Africa", "Indonesia", "Philippines", "Czechia", "Austria", "Ukraine", "Nigeria", "Finland"],
     "sk": ["Francúzsko", "Japonsko", "Brazília", "Kanada", "Egypt", "Austrália", "Mexiko", "India", "Nemecko", "Taliansko", "Argentína", "Thajsko", "Nórsko", "Keňa", "Peru"],
     "da": ["Frankrig", "Japan", "Brasilien", "Canada", "Egypten", "Australien", "Mexico", "Indien", "Tyskland", "Italien", "Argentina", "Thailand", "Norge", "Kenya", "Peru"],
     "de": ["Frankreich", "Japan", "Brasilien", "Kanada", "Ägypten", "Australien", "Mexiko", "Indien", "Deutschland", "Italien", "Argentinien", "Thailand", "Norwegen", "Kenia", "Peru"],
@@ -24,7 +24,7 @@
     "zh": ["法国", "日本", "巴西", "加拿大", "埃及", "澳大利亚", "墨西哥", "印度", "德国", "意大利", "阿根廷", "泰国", "挪威", "肯尼亚", "秘鲁"]
   },
   "Sports": {
-    "en": ["Soccer", "Basketball", "Tennis", "Swimming", "Boxing", "Cricket", "Hockey", "Baseball", "Golf", "Rugby", "Volleyball", "Skiing", "Surfing", "Fencing", "Archery"],
+    "en": ["Soccer", "Basketball", "Tennis", "Swimming", "Boxing", "Cricket", "Hockey", "Baseball", "Golf", "Rugby", "Volleyball", "Skiing", "Surfing", "Fencing", "Archery", "Badminton", "Table Tennis", "Wrestling", "Karate", "Skateboarding", "Snowboarding", "Cycling", "Rowing", "Handball", "Triathlon", "Judo", "Taekwondo", "Diving", "Sailing", "Weightlifting", "Gymnastics", "Marathon", "Motocross", "Billiards", "Bowling"],
     "sk": ["Futbal", "Basketbal", "Tenis", "Plávanie", "Box", "Kriket", "Hokej", "Bejzbal", "Golf", "Ragby", "Volejbal", "Lyžovanie", "Surfovanie", "Šerm", "Lukostreľba"],
     "da": ["Fodbold", "Basketball", "Tennis", "Svømning", "Boksning", "Cricket", "Hockey", "Baseball", "Golf", "Rugby", "Volleyball", "Skiløb", "Surfing", "Fægtning", "Bueskydning"],
     "de": ["Fußball", "Basketball", "Tennis", "Schwimmen", "Boxen", "Cricket", "Hockey", "Baseball", "Golf", "Rugby", "Volleyball", "Skifahren", "Surfen", "Fechten", "Bogenschießen"],
@@ -32,7 +32,7 @@
     "zh": ["足球", "篮球", "网球", "游泳", "拳击", "板球", "曲棍球", "棒球", "高尔夫", "橄榄球", "排球", "滑雪", "冲浪", "击剑", "射箭"]
   },
   "Movies": {
-    "en": ["Titanic", "Inception", "Gladiator", "Avatar", "Interstellar", "Jaws", "Rocky", "Frozen", "Shrek", "Matrix", "Aladdin", "Joker", "Alien", "Bambi", "Coco"],
+    "en": ["Titanic", "Inception", "Gladiator", "Avatar", "Interstellar", "Jaws", "Rocky", "Frozen", "Shrek", "Matrix", "Aladdin", "Joker", "Alien", "Bambi", "Coco", "Moana", "Encanto", "Mulan", "Up", "Brave", "Cars", "Megamind", "Top Gun", "Skyfall", "Godfather", "Psycho", "Casablanca", "Gravity", "Amelie", "Ratatouille", "WALL-E", "Dune", "Barbie", "Oppenheimer", "John Wick"],
     "sk": ["Titanic", "Počiatok", "Gladiátor", "Avatar", "Interstellar", "Čeľuste", "Rocky", "Ľadové kráľovstvo", "Shrek", "Matrix", "Aladin", "Joker", "Votrelec", "Bambi", "Coco"],
     "da": ["Titanic", "Inception", "Gladiator", "Avatar", "Interstellar", "Dødens gab", "Rocky", "Frost", "Shrek", "Matrix", "Aladdin", "Joker", "Alien", "Bambi", "Coco"],
     "de": ["Titanic", "Inception", "Gladiator", "Avatar", "Interstellar", "Der weiße Hai", "Rocky", "Die Eiskönigin", "Shrek", "Matrix", "Aladdin", "Joker", "Alien", "Bambi", "Coco"],
@@ -40,7 +40,7 @@
     "zh": ["泰坦尼克号", "盗梦空间", "角斗士", "阿凡达", "星际穿越", "大白鲨", "洛奇", "冰雪奇缘", "怪物史瑞克", "黑客帝国", "阿拉丁", "小丑", "异形", "小鹿斑比", "寻梦环游记"]
   },
   "Professions": {
-    "en": ["Doctor", "Pilot", "Chef", "Astronaut", "Firefighter", "Teacher", "Detective", "Architect", "Mechanic", "Journalist", "Lawyer", "Dentist", "Farmer", "Sculptor", "Plumber"],
+    "en": ["Doctor", "Pilot", "Chef", "Astronaut", "Firefighter", "Teacher", "Detective", "Architect", "Mechanic", "Journalist", "Lawyer", "Dentist", "Farmer", "Sculptor", "Plumber", "Nurse", "Programmer", "Bartender", "Photographer", "Therapist", "Barber", "Electrician", "Librarian", "Pharmacist", "Paramedic", "Veterinarian", "Scientist", "Cashier", "Designer", "Translator", "Coach", "Butcher", "Tailor", "Miner", "Surgeon"],
     "sk": ["Lekár", "Pilot", "Kuchár", "Astronaut", "Hasič", "Učiteľ", "Detektív", "Architekt", "Mechanik", "Novinár", "Právnik", "Zubár", "Farmár", "Sochár", "Inštalatér"],
     "da": ["Læge", "Pilot", "Kok", "Astronaut", "Brandmand", "Lærer", "Detektiv", "Arkitekt", "Mekaniker", "Journalist", "Advokat", "Tandlæge", "Landmand", "Billedhugger", "Blikkenslager"],
     "de": ["Arzt", "Pilot", "Koch", "Astronaut", "Feuerwehrmann", "Lehrer", "Detektiv", "Architekt", "Mechaniker", "Journalist", "Anwalt", "Zahnarzt", "Bauer", "Bildhauer", "Klempner"],
@@ -48,12 +48,36 @@
     "zh": ["医生", "飞行员", "厨师", "宇航员", "消防员", "教师", "侦探", "建筑师", "机械师", "记者", "律师", "牙医", "农民", "雕塑家", "水管工"]
   },
   "Objects": {
-    "en": ["Umbrella", "Mirror", "Candle", "Compass", "Telescope", "Hammer", "Backpack", "Bicycle", "Guitar", "Clock", "Ladder", "Anchor", "Trophy", "Whistle", "Lantern"],
+    "en": ["Umbrella", "Mirror", "Candle", "Compass", "Telescope", "Hammer", "Backpack", "Bicycle", "Guitar", "Clock", "Ladder", "Anchor", "Trophy", "Whistle", "Lantern", "Microwave", "Notebook", "Wallet", "Helmet", "Scissors", "Stapler", "Keyboard", "Headphones", "Toothbrush", "Blanket", "Suitcase", "Thermos", "Tripod", "Flashlight", "Charger", "Joystick", "Paintbrush", "Calculator", "Kettle", "Spoon"],
     "sk": ["Dáždnik", "Zrkadlo", "Sviečka", "Kompas", "Ďalekohľad", "Kladivo", "Batoh", "Bicykel", "Gitara", "Hodiny", "Rebrík", "Kotva", "Trofej", "Píšťalka", "Lampáš"],
     "da": ["Paraply", "Spejl", "Stearinlys", "Kompas", "Teleskop", "Hammer", "Rygsæk", "Cykel", "Guitar", "Ur", "Stige", "Anker", "Trofæ", "Fløjte", "Lygte"],
     "de": ["Regenschirm", "Spiegel", "Kerze", "Kompass", "Teleskop", "Hammer", "Rucksack", "Fahrrad", "Gitarre", "Uhr", "Leiter", "Anker", "Pokal", "Pfeife", "Laterne"],
     "es": ["Paraguas", "Espejo", "Vela", "Brújula", "Telescopio", "Martillo", "Mochila", "Bicicleta", "Guitarra", "Reloj", "Escalera", "Ancla", "Trofeo", "Silbato", "Linterna"],
     "zh": ["雨伞", "镜子", "蜡烛", "指南针", "望远镜", "锤子", "背包", "自行车", "吉他", "时钟", "梯子", "锚", "奖杯", "哨子", "灯笼"]
+  },
+  "Adult": {
+    "en": ["Mortgage", "Taxes", "Interview", "Bills", "Commute", "Hangover", "Deadline", "Laundry", "Promotion", "Insurance", "Retirement", "Parenting", "Budget", "Back Pain", "Coffee Machine", "Apartment", "Overtime", "Paycheck", "Planner", "Vacation Days", "Networking", "Burnout", "Meal Prep", "Errands", "Dentist"]
+  },
+  "Kids": {
+    "en": ["Playground", "Crayons", "Backpack", "Cartoon", "Lollipop", "Sandbox", "Pajamas", "Storybook", "Lego", "Swing", "Birthday Cake", "Pillow Fort", "Hide and Seek", "Tricycle", "Puppet", "Sticker", "Balloon", "Treasure Hunt", "Superhero", "Bedtime", "Bubbles", "Sled", "Yoyo", "Marbles", "Bubblegum"]
+  },
+  "Kinky": {
+    "en": ["Handcuffs", "Blindfold", "Whisper", "Tease", "Leather", "Lace", "Velvet", "Candlewax", "Mask", "Collar", "Roleplay", "Seduction", "Heartbeat", "Midnight", "Silhouette", "Choker", "Secrets", "Temptation", "Afterglow", "Perfume", "Lipstick", "Corset", "Dare", "Flirt", "Satin"]
+  },
+  "Criminal": {
+    "en": ["Heist", "Alibi", "Fingerprint", "Detective", "Safehouse", "Lockpick", "Getaway", "Interrogation", "Mugshot", "Evidence", "Smuggler", "Counterfeit", "Bribe", "Wiretap", "Arson", "Kidnap", "Ransom", "Blackmail", "Gangster", "Informer", "Vault", "Scam", "Alias", "Contraband", "Witness"]
+  },
+  "College": {
+    "en": ["Dorm", "Midterm", "Finals", "Fraternity", "Sorority", "Semester", "Thesis", "Lecture", "Syllabus", "Professor", "Tuition", "Cafeteria", "Campus", "Study Group", "Internship", "Notebook", "Office Hours", "Quiz", "Commencement", "Scholarship", "All-Nighter", "Lab Partner", "Registrar", "Elective", "Freshman"]
+  },
+  "Party": {
+    "en": ["Confetti", "Playlist", "Dancefloor", "DJ", "Karaoke", "Mocktail", "Photobooth", "Glowstick", "Cupcake Tower", "Invites", "Dress Code", "Afterparty", "Sparkler", "Balloons", "Party Hat", "Snack Table", "Polaroid", "Game Night", "Toast", "Surprise", "Neon", "Houseparty", "Champagne", "Streamers", "Disco Ball"]
+  },
+  "Internet Culture": {
+    "en": ["Meme", "Hashtag", "Viral", "Livestream", "Podcast", "Emoji", "Algorithm", "Thumbnail", "Clickbait", "Reaction", "Subreddit", "GIF", "Cosplay", "Avatar", "DMs", "Fanart", "Spoiler", "Trend", "Thread", "Notification", "Screenshot", "Follower", "Clip", "Speedrun", "Unboxing"]
+  },
+  "Dating": {
+    "en": ["Crush", "First Date", "Red Flag", "Chemistry", "Texting", "Ghosting", "Compliment", "Jealousy", "Butterflies", "Match", "Breakup", "Anniversary", "Candlelight", "Road Trip", "Picnic", "Inside Joke", "Soulmate", "Playlist", "Flirting", "Heartbreak", "Proposal", "Spark", "Rebound", "Long Distance", "Commitment"]
   },
   "Team Pairs": {
     "en": ["Cat|Dog", "Sun|Moon", "Fire|Ice", "Mountain|Ocean", "Summer|Winter", "Coffee|Tea", "Guitar|Piano", "Train|Airplane", "Bread|Rice", "Gold|Silver", "Forest|Desert", "Thunder|Lightning", "Sunrise|Sunset", "Apple|Orange", "Castle|Tower"],

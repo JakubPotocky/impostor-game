@@ -9,6 +9,7 @@ import 'package:impostor/core/widgets.dart';
 import 'package:impostor/core/word_hint_service.dart';
 import 'package:impostor/core/word_picker_service.dart';
 import 'package:impostor/features/game_setup/game_setup_notifier.dart';
+import 'package:impostor/features/game_setup/game_setup_state.dart';
 import 'package:impostor/features/players/players_notifier.dart';
 import 'package:impostor/features/role_reveal/role_reveal_screen.dart';
 import 'package:impostor/features/themes/themes_notifier.dart';
@@ -442,9 +443,67 @@ class PreGameScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
 
-          // --- Sudden Death toggle ---
+          // --- Theme visibility mode ---
           StaggeredFadeIn(
             delay: 6,
+            child: SetupCard(
+              icon: Icons.style_rounded,
+              iconColor: Colors.purple,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Theme Visibility',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Show theme while revealing words',
+                    style: TextStyle(
+                      color: colorScheme.onSurfaceVariant,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SegmentedButton<ThemeVisibilityMode>(
+                    showSelectedIcon: false,
+                    segments: const [
+                      ButtonSegment(
+                        value: ThemeVisibilityMode.off,
+                        label: Text('Off'),
+                        icon: Icon(Icons.visibility_off_rounded),
+                      ),
+                      ButtonSegment(
+                        value: ThemeVisibilityMode.innocentsOnly,
+                        label: Text('Innocents only'),
+                        icon: Icon(Icons.shield_rounded),
+                      ),
+                      ButtonSegment(
+                        value: ThemeVisibilityMode.everyone,
+                        label: Text('Everyone'),
+                        icon: Icon(Icons.visibility_rounded),
+                      ),
+                    ],
+                    selected: {setupState.themeVisibilityMode},
+                    onSelectionChanged: (set) {
+                      if (set.isEmpty) return;
+                      ref
+                          .read(gameSetupProvider.notifier)
+                          .setThemeVisibilityMode(set.first);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // --- Sudden Death toggle ---
+          StaggeredFadeIn(
+            delay: 7,
             child: SetupCard(
               icon: Icons.local_fire_department,
               iconColor: Colors.red,
@@ -487,7 +546,7 @@ class PreGameScreen extends ConsumerWidget {
 
           // --- Start game button ---
           StaggeredFadeIn(
-            delay: 7,
+            delay: 8,
             child: StartGameButton(
               canStart: canStart,
               onPressed: () =>
@@ -573,6 +632,7 @@ class PreGameScreen extends ConsumerWidget {
           word: word,
           themeName: theme,
           hintsEnabled: setup.hintsEnabled,
+          themeVisibilityMode: setup.themeVisibilityMode,
           impostorHintWord: impostorHintWord,
           timerSeconds: setup.timerEnabled ? setup.timerMinutes * 60 : 0,
           isBlankRound: isBlankRound,

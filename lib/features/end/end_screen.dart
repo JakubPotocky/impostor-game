@@ -212,6 +212,7 @@ class _EndScreenState extends ConsumerState<EndScreen>
           word: word,
           themeName: theme,
           hintsEnabled: setup.hintsEnabled,
+          themeVisibilityMode: setup.themeVisibilityMode,
           impostorHintWord: impostorHintWord,
           timerSeconds: setup.timerEnabled ? setup.timerMinutes * 60 : 0,
           isBlankRound: isBlankRound,

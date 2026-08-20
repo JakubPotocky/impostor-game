@@ -15,11 +15,14 @@ import 'package:impostor/features/game_setup/game_setup_notifier.dart';
 import 'package:impostor/features/game_setup/game_setup_state.dart';
 import 'package:impostor/features/lan_lobby/lan_session_notifier.dart';
 import 'package:impostor/features/lan_lobby/lan_session_state.dart';
+import 'package:impostor/features/lan_lobby/screens/host_lobby_screen.dart';
+import 'package:impostor/features/lan_lobby/screens/lan_ready_check_screen.dart';
 import 'package:impostor/features/players/players_notifier.dart';
+import 'package:impostor/features/players/players_screen.dart';
 import 'package:impostor/features/pre_game/pre_game_screen.dart';
 import 'package:impostor/features/role_reveal/role_reveal_screen.dart';
 import 'package:impostor/features/themes/themes_notifier.dart';
-import 'package:impostor/features/voting/voting_screen.dart';
+import 'package:impostor/features/voting/voting_screen.dart' show GameResult;
 
 /// End screen showing the game result, who the impostors were, and the word.
 class EndScreen extends ConsumerStatefulWidget {
@@ -147,7 +150,13 @@ class _EndScreenState extends ConsumerState<EndScreen>
   }
 
   void _quickRematch() {
-    final allPlayers = ref.read(playersProvider).players;
+    final lanState = ref.read(lanSessionProvider);
+    final isLanHosting = lanState.isHost && lanState.phase != LanPhase.idle;
+    // Read from the live LAN roster when hosting, not the pre-lobby players
+    // provider — players can be added/removed from the Host Lobby screen
+    // after hosting starts.
+    final allPlayers =
+        isLanHosting ? lanState.players : ref.read(playersProvider).players;
     final setup = ref.read(gameSetupProvider);
     final themesState = ref.read(themesProvider).valueOrNull;
     if (themesState == null) return;
@@ -207,9 +216,6 @@ class _EndScreenState extends ConsumerState<EndScreen>
       );
     }
 
-    final lanState = ref.read(lanSessionProvider);
-    final isLanHosting = lanState.isHost && lanState.phase != LanPhase.idle;
-
     if (isLanHosting) {
       _lanQuickRematch(
         allAssignments: assignments,
@@ -238,6 +244,22 @@ class _EndScreenState extends ConsumerState<EndScreen>
           suddenDeathEnabled: setup.suddenDeathEnabled,
         ),
       ),
+      (route) => route.isFirst,
+    );
+  }
+
+  /// Returns to the Host Lobby screen without starting a new round —
+  /// lets the host change themes/settings, add or remove players, and
+  /// let more guests join, while everyone currently connected stays in
+  /// the lobby with the identity they already picked.
+  void _backToLobbySettings() {
+    final lanState = ref.read(lanSessionProvider);
+    final modeName = lanState.session?.mode;
+    final mode = GameMode.values
+        .firstWhere((m) => m.name == modeName, orElse: () => GameMode.normal);
+    ref.read(lanSessionProvider.notifier).returnToLobby();
+    Navigator.of(context).pushAndRemoveUntil(
+      createSlideRoute(HostLobbyScreen(mode: mode)),
       (route) => route.isFirst,
     );
   }
@@ -282,16 +304,17 @@ class _EndScreenState extends ConsumerState<EndScreen>
         .toList();
 
     final timerSeconds = setup.timerEnabled ? setup.timerMinutes * 60 : 0;
+    Widget checkPlayersScreen(BuildContext ctx) => LanReadyCheckScreen(
+          assignments: allAssignments,
+          word: word,
+          timerSeconds: timerSeconds,
+          isBlankRound: isBlankRound,
+          reducedMotion: setup.reducedMotion,
+          suddenDeathEnabled: setup.suddenDeathEnabled,
+        );
 
     final nextScreen = hostAssignments.isEmpty
-        ? VotingScreen(
-            assignments: allAssignments,
-            word: word,
-            timerSeconds: timerSeconds,
-            isBlankRound: isBlankRound,
-            reducedMotion: setup.reducedMotion,
-            suddenDeathEnabled: setup.suddenDeathEnabled,
-          )
+        ? checkPlayersScreen(context)
         : RoleRevealScreen(
             assignments: hostAssignments,
             votingAssignments: allAssignments,
@@ -304,6 +327,8 @@ class _EndScreenState extends ConsumerState<EndScreen>
             isBlankRound: isBlankRound,
             reducedMotion: setup.reducedMotion,
             suddenDeathEnabled: setup.suddenDeathEnabled,
+            onComplete: checkPlayersScreen,
+            completeButtonLabel: 'Check Players',
           );
 
     // The LAN session lives in lanSessionProvider, not on the nav stack, so
@@ -328,6 +353,8 @@ class _EndScreenState extends ConsumerState<EndScreen>
     final colorScheme = Theme.of(context).colorScheme;
     final isBlankRound = widget.result == GameResult.blankRound;
     final isImpostorWin = widget.result == GameResult.impostorsWin;
+    final lanState = ref.watch(lanSessionProvider);
+    final isLanHosting = lanState.isHost && lanState.phase != LanPhase.idle;
 
     final resultColor = isBlankRound
         ? Colors.amber.shade400
@@ -583,6 +610,26 @@ class _EndScreenState extends ConsumerState<EndScreen>
                           ),
                         ),
                         const SizedBox(height: 12),
+
+                        // Back to lobby / settings button (LAN hosting only)
+                        if (isLanHosting) ...[
+                          SizedBox(
+                            width: double.infinity,
+                            height: 56,
+                            child: OutlinedButton.icon(
+                              onPressed: () => _backToLobbySettings(),
+                              icon: const Icon(Icons.settings_backup_restore_rounded),
+                              label: const Text('Back to Lobby / Settings',
+                                  style: TextStyle(fontSize: 16)),
+                              style: OutlinedButton.styleFrom(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                        ],
 
                         // Back to setup button
                         SizedBox(

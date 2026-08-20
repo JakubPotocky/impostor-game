@@ -26,6 +26,8 @@ class RoleRevealScreen extends StatefulWidget {
     this.reducedMotion = false,
     this.suddenDeathEnabled = true,
     this.votingAssignments,
+    this.onComplete,
+    this.completeButtonLabel = 'Start Voting',
   });
 
   final List<RoleAssignment> assignments;
@@ -38,6 +40,16 @@ class RoleRevealScreen extends StatefulWidget {
   /// roster here separately, since [assignments] on the host device may
   /// only be the subset of players nobody else claimed.
   final List<RoleAssignment>? votingAssignments;
+
+  /// Builds the screen to navigate to once all reveals are done, replacing
+  /// the default (go straight to [VotingScreen]).
+  ///
+  /// LAN hosting uses this to route through a "Check Players" screen first
+  /// instead of jumping straight to voting.
+  final Widget Function(BuildContext context)? onComplete;
+
+  /// Label for the button shown once all reveals are done.
+  final String completeButtonLabel;
 
   /// Discussion timer in seconds (0 = disabled).
   final int timerSeconds;
@@ -208,16 +220,20 @@ class _RoleRevealScreenState extends State<RoleRevealScreen>
   }
 
   void _goToVoting() {
+    final onComplete = widget.onComplete;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => VotingScreen(
-          assignments: widget.votingAssignments ?? widget.assignments,
-          word: widget.word,
-          timerSeconds: widget.timerSeconds,
-          isBlankRound: widget.isBlankRound,
-          reducedMotion: widget.reducedMotion,
-          suddenDeathEnabled: widget.suddenDeathEnabled,
-        ),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            onComplete != null
+                ? onComplete(context)
+                : VotingScreen(
+                    assignments: widget.votingAssignments ?? widget.assignments,
+                    word: widget.word,
+                    timerSeconds: widget.timerSeconds,
+                    isBlankRound: widget.isBlankRound,
+                    reducedMotion: widget.reducedMotion,
+                    suddenDeathEnabled: widget.suddenDeathEnabled,
+                  ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           final curved =
               CurvedAnimation(parent: animation, curve: Curves.easeOut);
@@ -615,8 +631,8 @@ class _RoleRevealScreenState extends State<RoleRevealScreen>
               child: FilledButton.icon(
                 onPressed: _goToVoting,
                 icon: const Icon(Icons.how_to_vote_rounded),
-                label:
-                    const Text('Start Voting', style: TextStyle(fontSize: 18)),
+                label: Text(widget.completeButtonLabel,
+                    style: const TextStyle(fontSize: 18)),
                 style: FilledButton.styleFrom(
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),

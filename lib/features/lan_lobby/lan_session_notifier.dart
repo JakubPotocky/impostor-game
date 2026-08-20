@@ -86,6 +86,15 @@ class LanSessionNotifier extends Notifier<LanSessionState> {
     state = state.copyWith(phase: LanPhase.inGame);
   }
 
+  /// Brings the host back to the lobby (themes, roster, new joiners) after
+  /// a round, without ending the session — connected guests stay joined
+  /// with their picked identity intact, ready for the next round.
+  void returnToLobby() {
+    if (!state.isHost) return;
+    state = state.copyWith(phase: LanPhase.inLobby, revealProgress: const {});
+    _broadcastLobbyState();
+  }
+
   /// Splits [allAssignments] across connected devices by claimed identity:
   /// each connected device that picked a player identity (native app or
   /// browser join) gets only that player's assignment. Any player nobody

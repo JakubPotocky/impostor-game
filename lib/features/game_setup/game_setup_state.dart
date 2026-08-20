@@ -59,18 +59,20 @@ class GameSetupState {
           language == other.language &&
           timerEnabled == other.timerEnabled &&
           timerMinutes == other.timerMinutes &&
-            hintsEnabled == other.hintsEnabled &&
+          hintsEnabled == other.hintsEnabled &&
           suddenDeathEnabled == other.suddenDeathEnabled &&
           darkMode == other.darkMode;
 
   @override
-  int get hashCode => Object.hash(impostorCount, Object.hashAll(selectedThemes),
-          language,
-          timerEnabled,
-          timerMinutes,
-          hintsEnabled,
-          suddenDeathEnabled,
-          darkMode);
+  int get hashCode => Object.hash(
+      impostorCount,
+      Object.hashAll(selectedThemes),
+      language,
+      timerEnabled,
+      timerMinutes,
+      hintsEnabled,
+      suddenDeathEnabled,
+      darkMode);
 
   static bool _listEquals(List<String> a, List<String> b) {
     if (a.length != b.length) return false;

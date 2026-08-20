@@ -184,7 +184,8 @@ class _RoleRevealScreenState extends State<RoleRevealScreen>
     final first = String.fromCharCode(trimmed.runes.first);
     final last = String.fromCharCode(trimmed.runes.last);
     final length = trimmed.runes.length;
-    final words = trimmed.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
+    final words =
+        trimmed.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
 
     if (words > 1) {
       return 'Hint: category is ${widget.themeName}. $words words, starts with "$first".';
@@ -428,7 +429,8 @@ class _RoleRevealScreenState extends State<RoleRevealScreen>
                           horizontal: 14, vertical: 10),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
-                        color: colorScheme.surfaceContainerHighest.withAlpha(90),
+                        color:
+                            colorScheme.surfaceContainerHighest.withAlpha(90),
                         border: Border.all(
                           color: colorScheme.outline.withAlpha(90),
                         ),

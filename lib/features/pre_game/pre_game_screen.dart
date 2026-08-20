@@ -30,8 +30,9 @@ class PreGameScreen extends ConsumerWidget {
     final playerCount = playersState.count;
     final players = playersState.players;
     final impostorCount = setupState.impostorCount;
-    final selectedThemes =
-      setupState.selectedThemes.where((name) => name != 'Team Pairs').toList();
+    final selectedThemes = setupState.selectedThemes
+        .where((name) => name != 'Team Pairs')
+        .toList();
 
     final hasEnoughPlayers = Validators.hasEnoughPlayers(playerCount,
         minimum: AppConstants.minPlayers);
@@ -431,9 +432,8 @@ class PreGameScreen extends ConsumerWidget {
                   ),
                   Switch(
                     value: setupState.hintsEnabled,
-                    onChanged: (v) => ref
-                        .read(gameSetupProvider.notifier)
-                        .setHintsEnabled(v),
+                    onChanged: (v) =>
+                        ref.read(gameSetupProvider.notifier).setHintsEnabled(v),
                   ),
                 ],
               ),
@@ -508,7 +508,7 @@ class PreGameScreen extends ConsumerWidget {
     final allPlayers = ref.read(playersProvider).players;
     final setup = ref.read(gameSetupProvider);
     final enabledThemes =
-      setup.selectedThemes.where((name) => name != 'Team Pairs').toList();
+        setup.selectedThemes.where((name) => name != 'Team Pairs').toList();
     if (enabledThemes.isEmpty) return;
 
     final random = Random();

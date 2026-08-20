@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:impostor/core/constants.dart';
 import 'package:impostor/core/widgets.dart';
+import 'package:impostor/features/lan_lobby/screens/lobby_mode_screen.dart';
 import 'package:impostor/features/players/players_screen.dart';
 import 'package:impostor/features/changelog/changelog_screen.dart';
 import 'package:impostor/features/rules/rules_screen.dart';
@@ -195,9 +196,40 @@ class HomeScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
 
-                  // --- How to Play ---
+                  // --- LAN Multiplayer ---
                   StaggeredFadeIn(
                     delay: 3,
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            createSlideRoute(const LobbyModeScreen()),
+                          );
+                        },
+                        icon: const Icon(Icons.wifi_rounded),
+                        label: const Text(
+                          'LAN Multiplayer',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          side: BorderSide(
+                            color: colorScheme.primary.withAlpha(120),
+                          ),
+                          foregroundColor: colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // --- How to Play ---
+                  StaggeredFadeIn(
+                    delay: 4,
                     child: SizedBox(
                       width: double.infinity,
                       height: 52,
@@ -227,7 +259,7 @@ class HomeScreen extends ConsumerWidget {
 
                   // --- Game History ---
                   StaggeredFadeIn(
-                    delay: 4,
+                    delay: 5,
                     child: SizedBox(
                       width: double.infinity,
                       height: 52,
@@ -257,7 +289,7 @@ class HomeScreen extends ConsumerWidget {
 
                   // --- Word Analytics ---
                   StaggeredFadeIn(
-                    delay: 5,
+                    delay: 6,
                     child: SizedBox(
                       width: double.infinity,
                       height: 52,
@@ -287,7 +319,7 @@ class HomeScreen extends ConsumerWidget {
 
                   // --- What's New ---
                   StaggeredFadeIn(
-                    delay: 6,
+                    delay: 7,
                     child: SizedBox(
                       width: double.infinity,
                       height: 52,
@@ -317,7 +349,7 @@ class HomeScreen extends ConsumerWidget {
 
                   // --- Settings ---
                   StaggeredFadeIn(
-                    delay: 7,
+                    delay: 8,
                     child: SizedBox(
                       width: double.infinity,
                       height: 52,

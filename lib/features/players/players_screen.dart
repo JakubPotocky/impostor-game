@@ -6,6 +6,7 @@ import 'package:impostor/core/validators.dart';
 import 'package:impostor/core/widgets.dart';
 import 'package:impostor/data/game_history_repository.dart';
 import 'package:impostor/features/players/players_notifier.dart';
+import 'package:impostor/features/lan_lobby/screens/host_lobby_screen.dart';
 import 'package:impostor/features/pre_game/pre_game_screen.dart';
 import 'package:impostor/features/team_mode/team_mode_screen.dart';
 
@@ -16,9 +17,14 @@ enum GameMode {
 
 /// Screen for managing players — add, edit, delete, reorder.
 class PlayersScreen extends ConsumerStatefulWidget {
-  const PlayersScreen({super.key, this.mode = GameMode.normal});
+  const PlayersScreen({
+    super.key,
+    this.mode = GameMode.normal,
+    this.lanHost = false,
+  });
 
   final GameMode mode;
+  final bool lanHost;
 
   @override
   ConsumerState<PlayersScreen> createState() => _PlayersScreenState();
@@ -121,13 +127,15 @@ class _PlayersScreenState extends ConsumerState<PlayersScreen> {
                   child: FilledButton.icon(
                     onPressed: hasEnough
                         ? () {
-                            Navigator.of(context).push(
-                              createSlideRoute(
-                                widget.mode == GameMode.team
-                                    ? const TeamModeScreen()
-                                    : const PreGameScreen(),
-                              ),
-                            );
+                            Widget next;
+                            if (widget.lanHost) {
+                              next = HostLobbyScreen(mode: widget.mode);
+                            } else if (widget.mode == GameMode.team) {
+                              next = const TeamModeScreen();
+                            } else {
+                              next = const PreGameScreen();
+                            }
+                            Navigator.of(context).push(createSlideRoute(next));
                           }
                         : null,
                     icon: const Icon(Icons.arrow_forward_rounded),

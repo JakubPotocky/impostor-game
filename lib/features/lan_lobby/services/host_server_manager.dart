@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:uuid/uuid.dart';
 import '../protocol/lan_message.dart';
 
@@ -17,6 +18,30 @@ class _ClientSocket {
     required this.sessionToken,
   });
 }
+
+/// A pre-loaded static asset for the browser join page, kept in memory so
+/// every request is served straight from RAM rather than re-reading the
+/// Flutter asset bundle each time.
+class _StaticAsset {
+  final List<int> bytes;
+  final String contentType;
+
+  const _StaticAsset({required this.bytes, required this.contentType});
+}
+
+const Map<String, String> _webAssetPaths = {
+  '/': 'assets/web_client/index.html',
+  '/index.html': 'assets/web_client/index.html',
+  '/app.js': 'assets/web_client/app.js',
+  '/style.css': 'assets/web_client/style.css',
+};
+
+const Map<String, String> _webAssetContentTypes = {
+  '/': 'text/html; charset=utf-8',
+  '/index.html': 'text/html; charset=utf-8',
+  '/app.js': 'application/javascript; charset=utf-8',
+  '/style.css': 'text/css; charset=utf-8',
+};
 
 class HostServerManager {
   HttpServer? _server;
@@ -44,19 +69,61 @@ class HostServerManager {
   }
 
   void _handleRequest(HttpRequest request) async {
-    if (!WebSocketTransformer.isUpgradeRequest(request)) {
+    if (WebSocketTransformer.isUpgradeRequest(request)) {
+      WebSocket socket;
+      try {
+        socket = await WebSocketTransformer.upgrade(request);
+      } catch (_) {
+        return;
+      }
+      _handleNewSocket(socket);
+      return;
+    }
+
+    if (request.method == 'GET') {
+      await _serveWebAsset(request);
+      return;
+    }
+
+    request.response
+      ..statusCode = HttpStatus.notFound
+      ..close();
+  }
+
+  // ── Browser client static assets ────────────────────────────────────────
+
+  Map<String, _StaticAsset>? _webAssetsCache;
+
+  Future<Map<String, _StaticAsset>> _loadWebAssets() async {
+    final cached = _webAssetsCache;
+    if (cached != null) return cached;
+    final assets = <String, _StaticAsset>{};
+    for (final entry in _webAssetPaths.entries) {
+      final data = await rootBundle.load(entry.value);
+      assets[entry.key] = _StaticAsset(
+        bytes: data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
+        contentType: _webAssetContentTypes[entry.key]!,
+      );
+    }
+    _webAssetsCache = assets;
+    return assets;
+  }
+
+  Future<void> _serveWebAsset(HttpRequest request) async {
+    final assets = await _loadWebAssets();
+    final asset = assets[request.uri.path];
+    if (asset == null) {
       request.response
-        ..statusCode = HttpStatus.badRequest
+        ..statusCode = HttpStatus.notFound
         ..close();
       return;
     }
-    WebSocket socket;
-    try {
-      socket = await WebSocketTransformer.upgrade(request);
-    } catch (_) {
-      return;
-    }
-    _handleNewSocket(socket);
+    request.response
+      ..statusCode = HttpStatus.ok
+      ..headers.set(HttpHeaders.contentTypeHeader, asset.contentType)
+      ..headers.set(HttpHeaders.cacheControlHeader, 'no-store')
+      ..add(asset.bytes)
+      ..close();
   }
 
   void _handleNewSocket(WebSocket socket) {

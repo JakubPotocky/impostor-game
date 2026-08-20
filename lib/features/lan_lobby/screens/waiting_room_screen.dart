@@ -34,7 +34,11 @@ class _WaitingRoomScreenState extends ConsumerState<WaitingRoomScreen> {
       _navigating = true;
       Navigator.of(context).push(createSlideRoute(
         DistributedRevealScreen(assignmentPayload: payload),
-      ));
+      )).then((_) {
+        // Reset once we're back on this screen so the next round's
+        // assignment (a rematch) can trigger navigation again.
+        if (mounted) _navigating = false;
+      });
     });
   }
 
@@ -46,6 +50,34 @@ class _WaitingRoomScreenState extends ConsumerState<WaitingRoomScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<LanSessionState>(lanSessionProvider, (previous, next) {
+      final justStarted =
+          next.phase == LanPhase.inGame && previous?.phase != LanPhase.inGame;
+      final neverPicked = next.myDevice?.selectedPlayerName == null;
+      if (justStarted && neverPicked) {
+        showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Round Started Without You'),
+            content: const Text(
+              "You didn't pick a player before the host started. "
+              "You'll be included next round.",
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  Navigator.of(context).pop();
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    });
+
     final session = ref.watch(lanSessionProvider);
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
@@ -155,13 +187,18 @@ class _WaitingRoomScreenState extends ConsumerState<WaitingRoomScreen> {
               ...session.players.map((name) {
                 final streak = streaks[name];
                 final isSelected = selectedName == name;
+                final takenByOther = session.devices.any((d) =>
+                    d.selectedPlayerName == name &&
+                    d.deviceId != session.myDeviceId);
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(14),
-                    onTap: () => ref
-                        .read(lanSessionProvider.notifier)
-                        .selectPlayerIdentity(name),
+                    onTap: takenByOther
+                        ? null
+                        : () => ref
+                            .read(lanSessionProvider.notifier)
+                            .selectPlayerIdentity(name),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       decoration: BoxDecoration(
@@ -178,41 +215,53 @@ class _WaitingRoomScreenState extends ConsumerState<WaitingRoomScreen> {
                       ),
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 12),
-                      child: Row(
-                        children: [
-                          if (isSelected)
-                            Icon(Icons.check_circle_rounded,
-                                color: colorScheme.primary, size: 22)
-                          else
-                            Icon(Icons.radio_button_unchecked_rounded,
-                                color: colorScheme.onSurfaceVariant, size: 22),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  name,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    color: isSelected
-                                        ? colorScheme.onPrimaryContainer
-                                        : colorScheme.onSurface,
-                                  ),
-                                ),
-                                if (streak != null && streak.current >= 2)
+                      child: Opacity(
+                        opacity: takenByOther ? 0.45 : 1,
+                        child: Row(
+                          children: [
+                            if (isSelected)
+                              Icon(Icons.check_circle_rounded,
+                                  color: colorScheme.primary, size: 22)
+                            else
+                              Icon(Icons.radio_button_unchecked_rounded,
+                                  color: colorScheme.onSurfaceVariant, size: 22),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
                                   Text(
-                                    '🔥 ${streak.current} win streak · best ${streak.best}',
+                                    name,
                                     style: TextStyle(
-                                      color: Colors.orange.shade400,
-                                      fontSize: 12,
                                       fontWeight: FontWeight.w600,
+                                      color: isSelected
+                                          ? colorScheme.onPrimaryContainer
+                                          : colorScheme.onSurface,
                                     ),
                                   ),
-                              ],
+                                  if (streak != null && streak.current >= 2)
+                                    Text(
+                                      '🔥 ${streak.current} win streak · best ${streak.best}',
+                                      style: TextStyle(
+                                        color: Colors.orange.shade400,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                            if (takenByOther)
+                              Text(
+                                'taken',
+                                style: TextStyle(
+                                  color: colorScheme.onSurfaceVariant,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

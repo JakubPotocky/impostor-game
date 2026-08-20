@@ -25,11 +25,19 @@ class RoleRevealScreen extends StatefulWidget {
     this.impostorHintWord,
     this.reducedMotion = false,
     this.suddenDeathEnabled = true,
+    this.votingAssignments,
   });
 
   final List<RoleAssignment> assignments;
   final String word;
   final String themeName;
+
+  /// The full player roster to vote over once reveals are done.
+  ///
+  /// Defaults to [assignments]. LAN hosting needs to pass the complete
+  /// roster here separately, since [assignments] on the host device may
+  /// only be the subset of players nobody else claimed.
+  final List<RoleAssignment>? votingAssignments;
 
   /// Discussion timer in seconds (0 = disabled).
   final int timerSeconds;
@@ -203,7 +211,7 @@ class _RoleRevealScreenState extends State<RoleRevealScreen>
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => VotingScreen(
-          assignments: widget.assignments,
+          assignments: widget.votingAssignments ?? widget.assignments,
           word: widget.word,
           timerSeconds: widget.timerSeconds,
           isBlankRound: widget.isBlankRound,

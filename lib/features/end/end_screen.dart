@@ -12,6 +12,9 @@ import 'package:impostor/core/widgets.dart';
 import 'package:impostor/data/game_history_repository.dart';
 import 'package:impostor/data/word_vote_repository.dart';
 import 'package:impostor/features/game_setup/game_setup_notifier.dart';
+import 'package:impostor/features/game_setup/game_setup_state.dart';
+import 'package:impostor/features/lan_lobby/lan_session_notifier.dart';
+import 'package:impostor/features/lan_lobby/lan_session_state.dart';
 import 'package:impostor/features/players/players_notifier.dart';
 import 'package:impostor/features/pre_game/pre_game_screen.dart';
 import 'package:impostor/features/role_reveal/role_reveal_screen.dart';
@@ -204,6 +207,21 @@ class _EndScreenState extends ConsumerState<EndScreen>
       );
     }
 
+    final lanState = ref.read(lanSessionProvider);
+    final isLanHosting = lanState.isHost && lanState.phase != LanPhase.idle;
+
+    if (isLanHosting) {
+      _lanQuickRematch(
+        allAssignments: assignments,
+        word: word,
+        theme: theme,
+        impostorHintWord: impostorHintWord,
+        isBlankRound: isBlankRound,
+        setup: setup,
+      );
+      return;
+    }
+
     // Replace the entire game stack with new role reveal.
     Navigator.of(context).pushAndRemoveUntil(
       createSlideRoute(
@@ -220,6 +238,81 @@ class _EndScreenState extends ConsumerState<EndScreen>
           suddenDeathEnabled: setup.suddenDeathEnabled,
         ),
       ),
+      (route) => route.isFirst,
+    );
+  }
+
+  /// Rematch while LAN-hosting: redistributes the new round through the
+  /// still-live LAN session instead of abandoning it. Connected devices
+  /// keep the player identity they already picked, so guests just see a
+  /// fresh reveal for the same player round after round — no re-joining,
+  /// no re-picking — until they disconnect or the host ends the session.
+  void _lanQuickRematch({
+    required List<RoleAssignment> allAssignments,
+    required String word,
+    required String theme,
+    required String? impostorHintWord,
+    required bool isBlankRound,
+    required GameSetupState setup,
+  }) {
+    final lanNotifier = ref.read(lanSessionProvider.notifier);
+    final hostBucket = lanNotifier.distributeAssignments(
+      allAssignments: allAssignments
+          .map((a) => {
+                'playerName': a.playerName,
+                'isImpostor': a.isImpostor,
+                'word': a.word,
+              })
+          .toList(),
+      word: word,
+      themeName: theme,
+      hintsEnabled: setup.hintsEnabled,
+      themeVisibilityMode: setup.themeVisibilityMode.index,
+      impostorHintWord: impostorHintWord,
+      reducedMotion: setup.reducedMotion,
+    );
+    lanNotifier.triggerStartGame();
+
+    final hostAssignments = hostBucket
+        .map((a) => RoleAssignment(
+              playerName: a['playerName'] as String,
+              isImpostor: a['isImpostor'] as bool,
+              word: a['word'] as String?,
+            ))
+        .toList();
+
+    final timerSeconds = setup.timerEnabled ? setup.timerMinutes * 60 : 0;
+
+    final nextScreen = hostAssignments.isEmpty
+        ? VotingScreen(
+            assignments: allAssignments,
+            word: word,
+            timerSeconds: timerSeconds,
+            isBlankRound: isBlankRound,
+            reducedMotion: setup.reducedMotion,
+            suddenDeathEnabled: setup.suddenDeathEnabled,
+          )
+        : RoleRevealScreen(
+            assignments: hostAssignments,
+            votingAssignments: allAssignments,
+            word: word,
+            themeName: theme,
+            hintsEnabled: setup.hintsEnabled,
+            themeVisibilityMode: setup.themeVisibilityMode,
+            impostorHintWord: impostorHintWord,
+            timerSeconds: timerSeconds,
+            isBlankRound: isBlankRound,
+            reducedMotion: setup.reducedMotion,
+            suddenDeathEnabled: setup.suddenDeathEnabled,
+          );
+
+    // The LAN session lives in lanSessionProvider, not on the nav stack, so
+    // it's safe to unwind HostLobbyScreen the same way the solo path does —
+    // the session keeps running in the background and the next rematch can
+    // still drive it directly. It only stops when endSession() is called
+    // (see "Back to Home" below) or a device disconnects on its own.
+    Navigator.of(context).pushAndRemoveUntil(
+      createSlideRoute(nextScreen),
       (route) => route.isFirst,
     );
   }
@@ -497,7 +590,18 @@ class _EndScreenState extends ConsumerState<EndScreen>
                           height: 56,
                           child: OutlinedButton.icon(
                             onPressed: () {
-                              // Pop back to setup screen.
+                              final lanState = ref.read(lanSessionProvider);
+                              if (lanState.isHost &&
+                                  lanState.phase != LanPhase.idle) {
+                                // HostLobbyScreen may no longer be on the
+                                // stack after a rematch, so its PopScope
+                                // won't fire — end the session explicitly
+                                // rather than leaving guests connected to
+                                // an orphaned lobby.
+                                ref
+                                    .read(lanSessionProvider.notifier)
+                                    .endSession();
+                              }
                               Navigator.of(context)
                                   .popUntil((route) => route.isFirst);
                             },

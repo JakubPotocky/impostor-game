@@ -8,15 +8,18 @@ class RulesScreen extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Rules'),
           centerTitle: true,
           bottom: const TabBar(
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
             tabs: [
               Tab(text: '60 sec'),
               Tab(text: 'Detailed'),
+              Tab(text: 'Connecting'),
             ],
           ),
         ),
@@ -24,6 +27,7 @@ class RulesScreen extends StatelessWidget {
           children: [
             _QuickRules(colorScheme: colorScheme),
             _DetailedRules(colorScheme: colorScheme),
+            _ConnectingGuide(colorScheme: colorScheme),
           ],
         ),
       ),
@@ -130,6 +134,57 @@ class _DetailedRules extends StatelessWidget {
           lines: [
             'Blank round: everyone is effectively impostor; ends on first elimination.',
             'If timer is on, discussion is time-bounded but voting still decides outcome.',
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _ConnectingGuide extends StatelessWidget {
+  const _ConnectingGuide({required this.colorScheme});
+
+  final ColorScheme colorScheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: const [
+        _RuleCard(
+          title: 'Two Ways to Join a LAN Game',
+          lines: [
+            'Everyone must be on the same network as the host.',
+            'If the host is sharing mobile data as a hotspot, connect to that hotspot instead of home Wi-Fi.',
+            'App players and browser players can play in the same game together.',
+          ],
+        ),
+        _RuleCard(
+          title: 'A) With the App Installed',
+          lines: [
+            'Everyone installs Impostor on their own phone.',
+            'The host opens LAN Multiplayer and taps Host a Game.',
+            'Each guest opens LAN Multiplayer and taps Join a Game — nearby lobbies appear automatically.',
+            'Guest taps the lobby, then picks which player they are from the list.',
+            'When the host starts the game, roles are revealed on each guest\'s own phone.',
+          ],
+        ),
+        _RuleCard(
+          title: 'B) From Chrome, Safari, or Any Browser — No App Needed',
+          lines: [
+            'The host creates a lobby as usual; the Host Lobby screen shows a join link and a QR code.',
+            'Each guest scans the QR code with their phone camera, or types the link into their browser.',
+            'A simple page opens — no install, no account. Guest enters a name and picks which player they are.',
+            'When the host starts the game, that guest\'s phone reveals their role right there in the browser.',
+            'Closing the browser tab leaves the game — reopen the same link to rejoin.',
+          ],
+        ),
+        _RuleCard(
+          title: 'Troubleshooting',
+          lines: [
+            'Nothing found when joining: double-check every phone is on the exact same Wi-Fi or hotspot.',
+            'QR code won\'t scan: type the link shown under the code instead.',
+            'A guest\'s screen looks frozen: they can reopen the link or reopen the app to rejoin.',
           ],
         ),
       ],

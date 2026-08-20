@@ -5,10 +5,22 @@ class ChangelogScreen extends StatelessWidget {
   const ChangelogScreen({super.key});
 
   /// Current app version.
-  static const currentVersion = '2.3.0';
+  static const currentVersion = '2.4.0';
 
   /// Ordered changelog entries (newest first).
   static const List<_ChangelogEntry> _entries = [
+    _ChangelogEntry(
+      version: '2.4.0',
+      date: 'August 20, 2026',
+      title: 'Browser Join — No App Required',
+      changes: [
+        'Guests can now join a LAN game straight from a phone browser — no app install required.',
+        'Host Lobby screen shows a join link and QR code; scanning it opens a lightweight join page.',
+        'Browser guests pick which player they are and get their own private, distributed role reveal, same as native app players.',
+        'App players and browser players can play together in the same lobby.',
+        'Added a "Connecting" tab to the Rules page explaining both ways to join: via the app or via a browser.',
+      ],
+    ),
     _ChangelogEntry(
       version: '2.3.0',
       date: 'August 16, 2026',

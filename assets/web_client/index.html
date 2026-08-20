@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>Impostor — Join Game</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%AD%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <span class="brand">🎭 Impostor</span>
+    <span id="conn-dot" class="conn-dot conn-connecting" title="Connecting…"></span>
+  </header>
+
+  <main id="screens">
+
+    <!-- Connect -->
+    <section id="screen-connect" class="screen active">
+      <div class="panel">
+        <h1>Join the game</h1>
+        <p class="muted">You're joining over the host's Wi-Fi. No internet needed, no app to install.</p>
+        <label class="field-label" for="name-input">Your name</label>
+        <input id="name-input" class="text-input" type="text" maxlength="20" autocomplete="off"
+               placeholder="e.g. Alex's phone" />
+        <div id="connect-error" class="error-box hidden"></div>
+        <button id="join-btn" class="btn btn-primary btn-block">Join Lobby</button>
+      </div>
+    </section>
+
+    <!-- Identity picker -->
+    <section id="screen-picker" class="screen">
+      <div class="panel">
+        <h1>Who are you playing as?</h1>
+        <p class="muted">Pick your name from the list the host set up.</p>
+        <div id="picker-empty" class="muted hidden">Waiting for the player list…</div>
+        <div id="picker-list" class="chip-list"></div>
+      </div>
+    </section>
+
+    <!-- Waiting room -->
+    <section id="screen-waiting" class="screen">
+      <div class="panel center">
+        <div class="spinner"></div>
+        <h1>Waiting for host to start…</h1>
+        <p class="muted">You're playing as <strong id="waiting-name">—</strong></p>
+        <button id="change-identity-btn" class="btn btn-text">Not you? Change identity</button>
+        <p class="muted small"><span id="waiting-count">0</span> device(s) in the lobby</p>
+      </div>
+    </section>
+
+    <!-- Starting transition -->
+    <section id="screen-starting" class="screen">
+      <div class="panel center">
+        <div class="spinner"></div>
+        <h1>Get ready…</h1>
+        <p class="muted">The host started the game. Roles are being dealt out.</p>
+      </div>
+    </section>
+
+    <!-- Reveal -->
+    <section id="screen-reveal" class="screen">
+      <div class="panel">
+        <div class="reveal-progress">
+          <div id="reveal-progress-fill" class="reveal-progress-fill"></div>
+        </div>
+        <p class="muted center small" id="reveal-counter">Player 1 of 1</p>
+
+        <div id="reveal-card" class="reveal-card">
+          <div id="reveal-hidden" class="reveal-state">
+            <div class="reveal-icon">🙈</div>
+            <div id="reveal-player-name" class="reveal-player-name">—</div>
+            <p class="muted center">Hand the phone to this player, then tap reveal.</p>
+          </div>
+          <div id="reveal-shown" class="reveal-state hidden">
+            <div id="reveal-role-icon" class="reveal-icon">✅</div>
+            <div id="reveal-role-title" class="reveal-role-title">—</div>
+            <p id="reveal-role-sub" class="muted center">—</p>
+            <p id="reveal-theme" class="muted center small hidden">—</p>
+            <div id="reveal-hint" class="hint-box hidden">
+              <span>💡</span><span id="reveal-hint-text">—</span>
+            </div>
+          </div>
+        </div>
+
+        <button id="reveal-action-btn" class="btn btn-primary btn-block">Reveal My Role</button>
+      </div>
+    </section>
+
+    <!-- Done with own subset -->
+    <section id="screen-done" class="screen">
+      <div class="panel center">
+        <div class="reveal-icon">🤝</div>
+        <h1 id="done-title">All your reveals are done!</h1>
+        <p class="muted" id="done-sub">Waiting for other devices to finish…</p>
+      </div>
+    </section>
+
+    <!-- Terminal / ended -->
+    <section id="screen-ended" class="screen">
+      <div class="panel center">
+        <div class="reveal-icon">🔌</div>
+        <h1 id="ended-title">Disconnected</h1>
+        <p class="muted" id="ended-message">Lost connection to the host.</p>
+        <button id="retry-btn" class="btn btn-primary btn-block">Try Again</button>
+      </div>
+    </section>
+
+  </main>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

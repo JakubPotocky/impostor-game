@@ -27,6 +27,8 @@ class LanSessionState {
   final String? error;
   final List<String> players;
   final Map<String, DeviceRevealProgress> revealProgress;
+  final int? hostPort;
+  final List<String> hostAddresses;
 
   const LanSessionState({
     this.role = LanRole.none,
@@ -38,6 +40,8 @@ class LanSessionState {
     this.error,
     this.players = const [],
     this.revealProgress = const {},
+    this.hostPort,
+    this.hostAddresses = const [],
   });
 
   bool get isActive => phase != LanPhase.idle;
@@ -53,6 +57,13 @@ class LanSessionState {
     return revealProgress.values.every((p) => p.completed >= p.total);
   }
 
+  /// URLs a guest can type or scan to join from a phone browser, one per
+  /// LAN-reachable address on this device (usually just one).
+  List<String> get browserJoinUrls {
+    if (hostPort == null || hostAddresses.isEmpty) return const [];
+    return hostAddresses.map((ip) => 'http://$ip:$hostPort').toList();
+  }
+
   LanSessionState copyWith({
     LanRole? role,
     LanPhase? phase,
@@ -63,6 +74,8 @@ class LanSessionState {
     String? error,
     List<String>? players,
     Map<String, DeviceRevealProgress>? revealProgress,
+    int? hostPort,
+    List<String>? hostAddresses,
   }) {
     return LanSessionState(
       role: role ?? this.role,
@@ -74,6 +87,8 @@ class LanSessionState {
       error: error,
       players: players ?? this.players,
       revealProgress: revealProgress ?? this.revealProgress,
+      hostPort: hostPort ?? this.hostPort,
+      hostAddresses: hostAddresses ?? this.hostAddresses,
     );
   }
 
@@ -87,5 +102,7 @@ class LanSessionState {
     error: null,
     players: players,
     revealProgress: revealProgress,
+    hostPort: hostPort,
+    hostAddresses: hostAddresses,
   );
 }

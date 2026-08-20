@@ -1,0 +1,278 @@
+:root {
+  --bg: #101218;
+  --surface: #1a1d27;
+  --surface-high: #23273370;
+  --outline: #33384a;
+  --text: #eef0f8;
+  --text-muted: #a6acc4;
+  --primary: #7b7ff2;
+  --primary-on: #ffffff;
+  --primary-container: #2c2e63;
+  --danger: #ef5959;
+  --danger-container: #4a2229;
+  --success: #4ade80;
+  --success-container: #1c3a2a;
+  --amber: #f5b34d;
+  --radius-lg: 20px;
+  --radius-md: 14px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f4f4fb;
+    --surface: #ffffff;
+    --surface-high: #ececf7;
+    --outline: #dcdcea;
+    --text: #1a1c26;
+    --text-muted: #5b5f75;
+    --primary: #5457c9;
+    --primary-on: #ffffff;
+    --primary-container: #e3e3fb;
+    --danger: #d84343;
+    --danger-container: #fbe3e3;
+    --success: #1f9d54;
+    --success-container: #e1f7e9;
+    --amber: #b3781f;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+#app {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(14px + var(--safe-top)) 20px 14px;
+}
+
+.brand {
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: 0.2px;
+}
+
+.conn-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--amber);
+}
+.conn-connecting { background: var(--amber); }
+.conn-connected { background: var(--success); }
+.conn-lost { background: var(--danger); }
+
+#screens {
+  flex: 1;
+  display: flex;
+  padding: 8px 16px calc(24px + var(--safe-bottom));
+}
+
+.screen {
+  display: none;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  flex: 1;
+}
+.screen.active { display: flex; flex-direction: column; }
+
+.panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+}
+
+.panel.center {
+  align-items: center;
+  text-align: center;
+}
+
+h1 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: 4px 0 2px;
+}
+
+.muted {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin: 0 0 6px;
+}
+.muted.small { font-size: 0.82rem; }
+.muted.center { text-align: center; }
+
+.field-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+.text-input {
+  background: var(--surface);
+  border: 1.5px solid var(--outline);
+  color: var(--text);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  font-size: 1rem;
+  width: 100%;
+  outline: none;
+}
+.text-input:focus { border-color: var(--primary); }
+
+.btn {
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.btn:disabled { opacity: 0.5; }
+.btn-block { width: 100%; }
+.btn-primary { background: var(--primary); color: var(--primary-on); }
+.btn-text { background: transparent; color: var(--primary); padding: 10px; font-size: 0.95rem; }
+
+.error-box {
+  background: var(--danger-container);
+  color: var(--danger);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.hidden { display: none !important; }
+
+.chip-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--outline);
+  background: var(--surface);
+  font-weight: 600;
+  cursor: pointer;
+}
+.chip.selected {
+  border-color: var(--primary);
+  background: var(--primary-container);
+}
+.chip.taken {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.chip-tag {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3.5px solid var(--outline);
+  border-top-color: var(--primary);
+  animation: spin 0.9s linear infinite;
+  margin-bottom: 10px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.reveal-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-high);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.reveal-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--primary);
+  transition: width 0.25s ease;
+}
+
+.reveal-card {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  padding: 32px 24px;
+  min-height: 320px;
+  margin: 8px 0 20px;
+}
+.reveal-card.impostor { background: var(--danger-container); }
+.reveal-card.innocent { background: var(--success-container); }
+
+.reveal-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.reveal-icon { font-size: 3rem; margin-bottom: 4px; }
+
+.reveal-player-name {
+  font-size: 1.6rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.reveal-role-title {
+  font-size: 1.7rem;
+  font-weight: 900;
+  text-align: center;
+  word-break: break-word;
+}
+
+.hint-box {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid var(--outline);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation: none; }
+  .reveal-progress-fill { transition: none; }
+}

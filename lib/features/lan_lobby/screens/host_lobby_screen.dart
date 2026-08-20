@@ -1,7 +1,9 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:impostor/core/role_assignment_service.dart';
 import 'package:impostor/core/word_hint_service.dart';
 import 'package:impostor/core/widgets.dart';
@@ -14,6 +16,7 @@ import 'package:impostor/features/players/players_screen.dart';
 import 'package:impostor/features/pre_game/pre_game_screen.dart';
 import 'package:impostor/features/role_reveal/role_reveal_screen.dart';
 import 'package:impostor/features/themes/themes_notifier.dart';
+import 'package:impostor/features/voting/voting_screen.dart';
 
 class HostLobbyScreen extends ConsumerStatefulWidget {
   const HostLobbyScreen({super.key, required this.mode});
@@ -50,6 +53,10 @@ class _HostLobbyScreenState extends ConsumerState<HostLobbyScreen> {
         .where((d) => d.connectionState == DeviceConnectionState.connected)
         .length;
 
+    final hasThemes = ref.watch(gameSetupProvider.select(
+      (s) => s.selectedThemes.where((name) => name != 'Team Pairs').isNotEmpty,
+    ));
+
     return PopScope(
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) ref.read(lanSessionProvider.notifier).endSession();
@@ -75,6 +82,10 @@ class _HostLobbyScreenState extends ConsumerState<HostLobbyScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                 children: [
                   _LobbyInfoCard(session: session),
+                  const SizedBox(height: 16),
+                  const _ThemesCard(),
+                  const SizedBox(height: 16),
+                  _BrowserJoinCard(session: session),
                   const SizedBox(height: 16),
                   _DeviceListCard(session: session),
                   const SizedBox(height: 16),
@@ -102,7 +113,8 @@ class _HostLobbyScreenState extends ConsumerState<HostLobbyScreen> {
                   width: double.infinity,
                   height: 56,
                   child: FilledButton.icon(
-                    onPressed: _starting ? null : _startGame,
+                    onPressed:
+                        (_starting || !hasThemes) ? null : _startGame,
                     icon: _starting
                         ? const SizedBox(
                             width: 20,
@@ -111,7 +123,11 @@ class _HostLobbyScreenState extends ConsumerState<HostLobbyScreen> {
                           )
                         : const Icon(Icons.play_arrow_rounded, size: 28),
                     label: Text(
-                      _starting ? 'Starting…' : 'Start Game',
+                      _starting
+                          ? 'Starting…'
+                          : hasThemes
+                              ? 'Start Game'
+                              : 'Pick a theme to start',
                       style: textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: colorScheme.onPrimary,
@@ -130,9 +146,17 @@ class _HostLobbyScreenState extends ConsumerState<HostLobbyScreen> {
     );
   }
 
+  void _showCannotStart(String message) {
+    setState(() => _starting = false);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   void _startGame() {
     final themesState = ref.read(themesProvider).valueOrNull;
-    if (themesState == null) return;
+    if (themesState == null) {
+      _showCannotStart('Themes are still loading — try again in a moment.');
+      return;
+    }
 
     setState(() => _starting = true);
 
@@ -142,7 +166,7 @@ class _HostLobbyScreenState extends ConsumerState<HostLobbyScreen> {
     final enabledThemes =
         setup.selectedThemes.where((name) => name != 'Team Pairs').toList();
     if (enabledThemes.isEmpty) {
-      setState(() => _starting = false);
+      _showCannotStart('Enable at least one theme to start.');
       return;
     }
 
@@ -152,16 +176,21 @@ class _HostLobbyScreenState extends ConsumerState<HostLobbyScreen> {
         ? allPlayers.where((p) => p != 'j999').toList()
         : List<String>.from(allPlayers);
     if (players.length < 3) {
-      setState(() => _starting = false);
+      _showCannotStart('Need at least 3 players to start.');
       return;
     }
+
+    // Guard against a stale/invalid saved impostor count (e.g. carried over
+    // from a bigger game) rather than hanging or crashing role assignment.
+    final maxImpostors = players.length - 1;
+    final impostorCount = setup.impostorCount.clamp(1, maxImpostors);
 
     final isBlankRound = hasJ999 || random.nextInt(12) == 0;
     final theme = enabledThemes[random.nextInt(enabledThemes.length)];
     final language = setup.language;
     final englishWords = themesState.getEnglishWords(theme);
     if (englishWords.isEmpty) {
-      setState(() => _starting = false);
+      _showCannotStart('The selected theme has no words — pick another theme.');
       return;
     }
 
@@ -190,14 +219,18 @@ class _HostLobbyScreenState extends ConsumerState<HostLobbyScreen> {
       const roleService = RoleAssignmentService();
       allAssignments = roleService.assignRoles(
         players: players,
-        impostorCount: setup.impostorCount,
+        impostorCount: impostorCount,
         word: word,
         random: random,
       );
     }
 
-    // Partition and send to clients.
-    lanNotifier.distributeAssignments(
+    // Split by claimed identity: each connected device that picked a player
+    // gets only that player's reveal; anyone unclaimed (including the
+    // host's own role, since the host never "picks" one) comes back here
+    // for the host to reveal locally. Works for zero guests up to everyone
+    // being claimed.
+    final hostBucket = lanNotifier.distributeAssignments(
       allAssignments: allAssignments
           .map((a) => {
                 'playerName': a.playerName,
@@ -214,25 +247,40 @@ class _HostLobbyScreenState extends ConsumerState<HostLobbyScreen> {
     );
     lanNotifier.triggerStartGame();
 
-    // Determine host's own subset (device index 0 = host, sorted by joinOrder).
-    final connectedDevices = ref
-        .read(lanSessionProvider)
-        .devices
-        .where((d) => d.connectionState == DeviceConnectionState.connected)
-        .toList()
-      ..sort((a, b) => a.joinOrder.compareTo(b.joinOrder));
-    final deviceCount = connectedDevices.length;
-    final hostAssignments = <RoleAssignment>[];
-    for (var i = 0; i < allAssignments.length; i++) {
-      if (i % deviceCount == 0) {
-        hostAssignments.add(allAssignments[i]);
-      }
-    }
+    final hostAssignments = hostBucket
+        .map((a) => RoleAssignment(
+              playerName: a['playerName'] as String,
+              isImpostor: a['isImpostor'] as bool,
+              word: a['word'] as String?,
+            ))
+        .toList();
 
     if (!mounted) return;
+
+    if (hostAssignments.isEmpty) {
+      // Every player was claimed by a connected device — the host has
+      // nothing left to reveal locally, so skip straight to voting with
+      // the full roster once everyone else has seen their role.
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text("Everyone's revealing on their own phone — starting discussion."),
+      ));
+      Navigator.of(context).push(createSlideRoute(
+        VotingScreen(
+          assignments: allAssignments,
+          word: word,
+          timerSeconds: setup.timerEnabled ? setup.timerMinutes * 60 : 0,
+          isBlankRound: isBlankRound,
+          reducedMotion: setup.reducedMotion,
+          suddenDeathEnabled: setup.suddenDeathEnabled,
+        ),
+      ));
+      return;
+    }
+
     Navigator.of(context).push(createSlideRoute(
       RoleRevealScreen(
         assignments: hostAssignments,
+        votingAssignments: allAssignments,
         word: word,
         themeName: theme,
         hintsEnabled: setup.hintsEnabled,
@@ -312,6 +360,206 @@ class _InfoRow extends StatelessWidget {
         Text('$label: ', style: const TextStyle(fontWeight: FontWeight.w500)),
         Text(value),
       ],
+    );
+  }
+}
+
+class _ThemesCard extends ConsumerWidget {
+  const _ThemesCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final setup = ref.watch(gameSetupProvider);
+    final themesAsync = ref.watch(themesProvider);
+    final selected =
+        setup.selectedThemes.where((n) => n != 'Team Pairs').toSet();
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: colorScheme.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Icon(Icons.category_rounded, color: colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                'Round Themes',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ]),
+            const SizedBox(height: 8),
+            Text(
+              'Pick while you wait for players to join.',
+              style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            themesAsync.when(
+              loading: () => const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: LinearProgressIndicator(),
+              ),
+              error: (e, _) => Text('Error loading themes: $e'),
+              data: (themesState) {
+                final names = themesState.themeNames
+                    .where((n) => n != 'Team Pairs')
+                    .toList();
+                if (names.isEmpty) {
+                  return const Text('No themes available');
+                }
+                return Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: names.map((name) {
+                    final isOn = selected.contains(name);
+                    return FilterChip(
+                      avatar: Icon(themeIcon(name), size: 18),
+                      label: Text(name),
+                      selected: isOn,
+                      onSelected: (_) => ref
+                          .read(gameSetupProvider.notifier)
+                          .toggleTheme(name),
+                      selectedColor: colorScheme.primaryContainer,
+                      checkmarkColor: colorScheme.onPrimaryContainer,
+                      labelStyle: TextStyle(
+                        fontWeight: isOn ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
+            ),
+            if (selected.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  'Enable at least one theme to start',
+                  style: TextStyle(color: colorScheme.error, fontSize: 12),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BrowserJoinCard extends StatelessWidget {
+  const _BrowserJoinCard({required this.session});
+  final LanSessionState session;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final urls = session.browserJoinUrls;
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: colorScheme.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Icon(Icons.qr_code_2_rounded, color: colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                'Join from a Phone Browser',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ]),
+            const SizedBox(height: 8),
+            if (urls.isEmpty)
+              Text(
+                'Resolving network address…',
+                style: TextStyle(color: colorScheme.onSurfaceVariant),
+              )
+            else ...[
+              Text(
+                'No app needed — scan the code or open this link on the '
+                'same Wi-Fi to join and pick a player.',
+                style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: QrImageView(
+                    data: urls.first,
+                    size: 160,
+                    backgroundColor: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        urls.first,
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.filledTonal(
+                    tooltip: 'Copy link',
+                    icon: const Icon(Icons.copy_rounded),
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: urls.first));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Link copied')),
+                      );
+                    },
+                  ),
+                ],
+              ),
+              if (urls.length > 1) ...[
+                const SizedBox(height: 10),
+                Text(
+                  'On a different network interface? Try: '
+                  '${urls.skip(1).join(', ')}',
+                  style: TextStyle(
+                    color: colorScheme.onSurfaceVariant,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

@@ -8,6 +8,7 @@ import 'protocol/lan_message.dart';
 import 'services/host_server_manager.dart';
 import 'services/client_manager.dart';
 import 'services/mdns_service.dart';
+import 'services/network_info_service.dart';
 
 const _kAppVersion = '1.0.0';
 
@@ -15,6 +16,7 @@ class LanSessionNotifier extends Notifier<LanSessionState> {
   final _host = HostServerManager();
   final _client = ClientManager();
   final _mdns = MdnsService();
+  final _networkInfo = const NetworkInfoService();
   Timer? _heartbeatTimer;
   Timer? _staleCheckTimer;
   final String _myDeviceId = const Uuid().v4();
@@ -49,6 +51,7 @@ class LanSessionNotifier extends Notifier<LanSessionState> {
       port: port,
       appVersion: _kAppVersion,
     );
+    final addresses = await _networkInfo.localIPv4Addresses();
     final hostDevice = ConnectedDevice(
       deviceId: _myDeviceId,
       displayName: 'Host',
@@ -64,6 +67,8 @@ class LanSessionNotifier extends Notifier<LanSessionState> {
       devices: [hostDevice],
       myDeviceId: _myDeviceId,
       players: players,
+      hostPort: port,
+      hostAddresses: addresses,
     );
     _startHeartbeats();
     _startStaleCheck();
@@ -81,7 +86,18 @@ class LanSessionNotifier extends Notifier<LanSessionState> {
     state = state.copyWith(phase: LanPhase.inGame);
   }
 
-  void distributeAssignments({
+  /// Splits [allAssignments] across connected devices by claimed identity:
+  /// each connected device that picked a player identity (native app or
+  /// browser join) gets only that player's assignment. Any player nobody
+  /// claimed — including the host's own game role, since the host never
+  /// "picks" an identity for itself — falls to the host's own bucket, so
+  /// the host passes their phone around for the rest, same as single-device
+  /// pass-and-play. This works for any number of connected devices, from
+  /// zero guests (host reveals everyone) up to every player being claimed.
+  ///
+  /// Returns the host's own bucket, since the caller (host UI) needs it
+  /// to drive its local reveal screen.
+  List<Map<String, dynamic>> distributeAssignments({
     required List<Map<String, dynamic>> allAssignments,
     required String word,
     required String themeName,
@@ -90,23 +106,36 @@ class LanSessionNotifier extends Notifier<LanSessionState> {
     required String? impostorHintWord,
     required bool reducedMotion,
   }) {
-    if (!state.isHost) return;
+    if (!state.isHost) return const [];
     final session = state.session!;
     final devices = state.devices
         .where((d) => d.connectionState == DeviceConnectionState.connected)
-        .toList()
-      ..sort((a, b) => a.joinOrder.compareTo(b.joinOrder));
+        .toList();
+    if (devices.isEmpty) return allAssignments;
 
-    final deviceCount = devices.length;
-    final buckets = List.generate(deviceCount, (_) => <Map<String, dynamic>>[]);
-    for (var i = 0; i < allAssignments.length; i++) {
-      buckets[i % deviceCount].add(allAssignments[i]);
+    final hostDevice = devices.firstWhere(
+      (d) => d.isHost,
+      orElse: () => devices.first,
+    );
+
+    final claimedBy = <String, ConnectedDevice>{
+      for (final d in devices)
+        if (d.selectedPlayerName != null) d.selectedPlayerName!: d,
+    };
+
+    final buckets = <String, List<Map<String, dynamic>>>{
+      for (final d in devices) d.deviceId: [],
+    };
+    for (final assignment in allAssignments) {
+      final playerName = assignment['playerName'] as String;
+      final targetDeviceId =
+          claimedBy[playerName]?.deviceId ?? hostDevice.deviceId;
+      buckets[targetDeviceId]!.add(assignment);
     }
 
     final progress = <String, DeviceRevealProgress>{};
-    for (var i = 0; i < devices.length; i++) {
-      final device = devices[i];
-      final bucket = buckets[i];
+    for (final device in devices) {
+      final bucket = buckets[device.deviceId]!;
       if (bucket.isEmpty) continue;
       progress[device.deviceId] = DeviceRevealProgress(
         deviceId: device.deviceId,
@@ -130,6 +159,7 @@ class LanSessionNotifier extends Notifier<LanSessionState> {
       );
     }
     state = state.copyWith(revealProgress: progress);
+    return buckets[hostDevice.deviceId] ?? const [];
   }
 
   // ── Client actions ────────────────────────────────────────────────────────

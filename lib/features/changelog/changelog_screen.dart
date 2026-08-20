@@ -5,10 +5,72 @@ class ChangelogScreen extends StatelessWidget {
   const ChangelogScreen({super.key});
 
   /// Current app version.
-  static const currentVersion = '1.7.0';
+  static const currentVersion = '2.3.0';
 
   /// Ordered changelog entries (newest first).
   static const List<_ChangelogEntry> _entries = [
+    _ChangelogEntry(
+      version: '2.3.0',
+      date: 'August 16, 2026',
+      title: 'Polish Update',
+      changes: [
+        'Refined role reveal flow to keep handoff faster between players.',
+        'Hints now support impostor-only clue mode with cleaner in-card layout.',
+        'Improved reveal/vote transition smoothness on low-end Android devices.',
+        'Small UX pass on buttons, spacing, and result messaging.',
+      ],
+    ),
+    _ChangelogEntry(
+      version: '2.2.0',
+      date: 'July 31, 2026',
+      title: 'LAN Lobby Improvements',
+      changes: [
+        'LAN host/client lobby flow stabilized for multi-device game nights.',
+        'Better reconnect and session-state handling while players join.',
+        'Distributed reveal progress indicators improved for host visibility.',
+        'Protocol payload cleanup for role assignment sync.',
+      ],
+    ),
+    _ChangelogEntry(
+      version: '2.1.0',
+      date: 'July 14, 2026',
+      title: 'Rules & Clarity',
+      changes: [
+        'Added dedicated Rules page with quick and detailed tabs.',
+        'Updated in-app guidance copy for first-time players and hosts.',
+        'Improved navigation from home into setup and rules.',
+      ],
+    ),
+    _ChangelogEntry(
+      version: '2.0.0',
+      date: 'June 26, 2026',
+      title: 'Game Feel Refresh',
+      changes: [
+        'Major animation and pacing pass across reveal, voting, and end screens.',
+        'Introduced reduced motion support to lower visual intensity when preferred.',
+        'Refined celebration and dramatic state transitions for clearer round outcomes.',
+      ],
+    ),
+    _ChangelogEntry(
+      version: '1.9.0',
+      date: 'June 12, 2026',
+      title: 'Streaks & History Expansion',
+      changes: [
+        'Added streak tracking signals and post-game momentum callouts.',
+        'Expanded saved game records with richer winner and mode metadata.',
+        'Improved stats consistency between normal mode and team mode rounds.',
+      ],
+    ),
+    _ChangelogEntry(
+      version: '1.8.0',
+      date: 'May 24, 2026',
+      title: 'Setup Controls Update',
+      changes: [
+        'Improved pre-game setup controls for hints, timers, and sudden death toggles.',
+        'Better persistence behavior for game options between sessions.',
+        'General reliability fixes for round start validation.',
+      ],
+    ),
     _ChangelogEntry(
       version: '1.7.0',
       date: 'March 27, 2026',

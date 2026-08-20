@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:impostor/core/animated_effects.dart';
 import 'package:impostor/core/feedback_service.dart';
+import 'package:impostor/core/motion.dart';
 import 'package:impostor/core/role_assignment_service.dart';
+import 'package:impostor/core/streaks.dart';
 import 'package:impostor/core/widgets.dart';
 import 'package:impostor/data/game_history_repository.dart';
 import 'package:impostor/data/word_vote_repository.dart';
@@ -23,12 +25,14 @@ class EndScreen extends ConsumerStatefulWidget {
     required this.word,
     required this.result,
     required this.killedIndices,
+    this.reducedMotion = false,
   });
 
   final List<RoleAssignment> assignments;
   final String word;
   final GameResult result;
   final List<int> killedIndices;
+  final bool reducedMotion;
 
   @override
   ConsumerState<EndScreen> createState() => _EndScreenState();
@@ -40,6 +44,7 @@ class _EndScreenState extends ConsumerState<EndScreen>
   /// null = not voted, true = liked, false = disliked.
   bool? _vote;
   bool _historySaved = false;
+  String? _hotStreakMessage;
   late AnimationController _ctrl;
   late Animation<double> _fadeIn;
   late Animation<double> _slideUp;
@@ -51,7 +56,10 @@ class _EndScreenState extends ConsumerState<EndScreen>
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: AppMotion.resolveDuration(
+        AppMotion.celebration,
+        reduced: widget.reducedMotion,
+      ),
     );
     _fadeIn = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
     _slideUp = Tween(begin: 30.0, end: 0.0).animate(
@@ -67,19 +75,71 @@ class _EndScreenState extends ConsumerState<EndScreen>
     if (_historySaved) return;
     _historySaved = true;
     final repo = ref.read(gameHistoryRepositoryProvider);
+    final winners = _winnerNames();
     repo.addGame(GameRecord(
       timestamp: DateTime.now(),
       word: widget.word,
+      mode: 'normal',
       impostorsWon: widget.result == GameResult.impostorsWin,
       players: widget.assignments.map((a) => a.playerName).toList(),
       impostorNames: widget.assignments
           .where((a) => a.isImpostor)
           .map((a) => a.playerName)
           .toList(),
+      winnerNames: winners,
       killedNames: widget.killedIndices
           .map((i) => widget.assignments[i].playerName)
           .toList(),
     ));
+
+    final updated = [
+      GameRecord(
+        timestamp: DateTime.now(),
+        word: widget.word,
+        mode: 'normal',
+        impostorsWon: widget.result == GameResult.impostorsWin,
+        players: widget.assignments.map((a) => a.playerName).toList(),
+        impostorNames: widget.assignments
+            .where((a) => a.isImpostor)
+            .map((a) => a.playerName)
+            .toList(),
+        winnerNames: winners,
+        killedNames: widget.killedIndices
+            .map((i) => widget.assignments[i].playerName)
+            .toList(),
+      ),
+      ...repo.getGames(),
+    ];
+    final streaks = computePlayerStreaks(updated);
+    final hot = winners
+        .where((name) => (streaks[name]?.current ?? 0) >= 2)
+        .toList(growable: false);
+    if (hot.isNotEmpty && mounted) {
+      hot.sort((a, b) =>
+          (streaks[b]?.current ?? 0).compareTo(streaks[a]?.current ?? 0));
+      final best = hot.first;
+      final value = streaks[best]!.current;
+      setState(() {
+        _hotStreakMessage = 'Hot streak! $best is on 🔥 $value';
+      });
+    }
+  }
+
+  List<String> _winnerNames() {
+    switch (widget.result) {
+      case GameResult.innocentsWin:
+        return widget.assignments
+            .where((a) => !a.isImpostor)
+            .map((a) => a.playerName)
+            .toList();
+      case GameResult.impostorsWin:
+        return widget.assignments
+            .where((a) => a.isImpostor)
+            .map((a) => a.playerName)
+            .toList();
+      case GameResult.blankRound:
+        return const [];
+    }
   }
 
   void _quickRematch() {
@@ -148,6 +208,7 @@ class _EndScreenState extends ConsumerState<EndScreen>
           hintsEnabled: setup.hintsEnabled,
           timerSeconds: setup.timerEnabled ? setup.timerMinutes * 60 : 0,
           isBlankRound: isBlankRound,
+          reducedMotion: setup.reducedMotion,
           suddenDeathEnabled: setup.suddenDeathEnabled,
         ),
       ),
@@ -194,20 +255,26 @@ class _EndScreenState extends ConsumerState<EndScreen>
               children: [
                 // Confetti celebration overlay
                 Positioned.fill(
-                  child: ConfettiBurst(
-                    particleCount: 80,
-                    colors: isBlankRound
-                        ? [Colors.amber, Colors.orange, Colors.yellow]
-                        : isImpostorWin
-                            ? [Colors.red, Colors.deepOrange, Colors.pink]
-                            : [
-                                Colors.green,
-                                Colors.teal,
-                                Colors.lightGreen,
-                                Colors.blue,
-                              ],
-                    duration: const Duration(milliseconds: 3000),
-                  ),
+                  child: widget.reducedMotion
+                      ? const SizedBox.shrink()
+                      : ConfettiBurst(
+                          particleCount: 80,
+                          colors: isBlankRound
+                              ? [Colors.amber, Colors.orange, Colors.yellow]
+                              : isImpostorWin
+                                  ? [
+                                      Colors.red,
+                                      Colors.deepOrange,
+                                      Colors.pink,
+                                    ]
+                                  : [
+                                      Colors.green,
+                                      Colors.teal,
+                                      Colors.lightGreen,
+                                      Colors.blue,
+                                    ],
+                          duration: const Duration(milliseconds: 3000),
+                        ),
                 ),
                 AnimatedBuilder(
                   animation: _ctrl,
@@ -228,7 +295,9 @@ class _EndScreenState extends ConsumerState<EndScreen>
 
                         // Result icon
                         DramaticEntrance(
-                          delay: const Duration(milliseconds: 200),
+                          delay: widget.reducedMotion
+                              ? Duration.zero
+                              : const Duration(milliseconds: 200),
                           child: GlowRing(
                             color: resultColor,
                             size: 140,
@@ -253,22 +322,49 @@ class _EndScreenState extends ConsumerState<EndScreen>
                         const SizedBox(height: 24),
 
                         // Winner text
-                        ShimmerText(
-                          text: isBlankRound
-                              ? 'Blank Round!'
-                              : isImpostorWin
-                                  ? 'Impostors Win!'
-                                  : 'Innocents Win!',
-                          shimmerColor: resultColor.withAlpha(128),
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.w900,
-                                color: resultColor,
+                        widget.reducedMotion
+                            ? Text(
+                                isBlankRound
+                                    ? 'Blank Round!'
+                                    : isImpostorWin
+                                        ? 'Impostors Win!'
+                                        : 'Innocents Win!',
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headlineMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w900,
+                                      color: resultColor,
+                                    ),
+                              )
+                            : ShimmerText(
+                                text: isBlankRound
+                                    ? 'Blank Round!'
+                                    : isImpostorWin
+                                        ? 'Impostors Win!'
+                                        : 'Innocents Win!',
+                                shimmerColor: resultColor.withAlpha(128),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .headlineMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w900,
+                                      color: resultColor,
+                                    ),
                               ),
-                        ),
                         const SizedBox(height: 8),
+                        if (_hotStreakMessage != null) ...[
+                          Text(
+                            _hotStreakMessage!,
+                            style: TextStyle(
+                              color: Colors.orange.shade300,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                        ],
                         Text(
                           isBlankRound
                               ? 'Nobody had the word — everyone was the impostor!'

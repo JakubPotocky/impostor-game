@@ -55,34 +55,43 @@ class GameRecord {
   const GameRecord({
     required this.timestamp,
     required this.word,
+    required this.mode,
     required this.impostorsWon,
     required this.players,
     required this.impostorNames,
+    required this.winnerNames,
     required this.killedNames,
   });
 
   final DateTime timestamp;
   final String word;
+  final String mode;
   final bool impostorsWon;
   final List<String> players;
   final List<String> impostorNames;
+  final List<String> winnerNames;
   final List<String> killedNames;
 
   Map<String, dynamic> toJson() => {
         'timestamp': timestamp.toIso8601String(),
         'word': word,
+        'mode': mode,
         'impostorsWon': impostorsWon,
         'players': players,
         'impostorNames': impostorNames,
+        'winnerNames': winnerNames,
         'killedNames': killedNames,
       };
 
   factory GameRecord.fromJson(Map<String, dynamic> json) => GameRecord(
         timestamp: DateTime.parse(json['timestamp'] as String),
         word: json['word'] as String,
+        mode: (json['mode'] as String?) ?? 'normal',
         impostorsWon: json['impostorsWon'] as bool,
         players: (json['players'] as List<dynamic>).cast<String>(),
         impostorNames: (json['impostorNames'] as List<dynamic>).cast<String>(),
+        winnerNames: ((json['winnerNames'] as List<dynamic>?) ?? const [])
+            .cast<String>(),
         killedNames: (json['killedNames'] as List<dynamic>).cast<String>(),
       );
 }

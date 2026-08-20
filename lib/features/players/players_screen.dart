@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:impostor/core/constants.dart';
+import 'package:impostor/core/streaks.dart';
 import 'package:impostor/core/validators.dart';
 import 'package:impostor/core/widgets.dart';
+import 'package:impostor/data/game_history_repository.dart';
 import 'package:impostor/features/players/players_notifier.dart';
 import 'package:impostor/features/pre_game/pre_game_screen.dart';
 import 'package:impostor/features/team_mode/team_mode_screen.dart';
@@ -43,6 +45,8 @@ class _PlayersScreenState extends ConsumerState<PlayersScreen> {
   Widget build(BuildContext context) {
     final playersState = ref.watch(playersProvider);
     final players = playersState.players;
+    final games = ref.read(gameHistoryRepositoryProvider).getGames();
+    final streaks = computePlayerStreaks(games);
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -203,6 +207,7 @@ class _PlayersScreenState extends ConsumerState<PlayersScreen> {
                               .read(playersProvider.notifier)
                               .removePlayer(index);
                         },
+                        streak: streaks[players[index]]?.current ?? 0,
                       );
                     },
                   ),
@@ -278,12 +283,14 @@ class _PlayerTile extends StatefulWidget {
     required super.key,
     required this.index,
     required this.name,
+    required this.streak,
     required this.onEdit,
     required this.onDelete,
   });
 
   final int index;
   final String name;
+  final int streak;
   final ValueChanged<String> onEdit;
   final VoidCallback onDelete;
 
@@ -369,6 +376,16 @@ class _PlayerTileState extends State<_PlayerTile>
                   widget.name,
                   style: const TextStyle(fontWeight: FontWeight.w500),
                 ),
+          subtitle: widget.streak >= 2
+              ? Text(
+                  '🔥 ${widget.streak} win streak',
+                  style: TextStyle(
+                    color: Colors.orange.shade400,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                )
+              : null,
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [

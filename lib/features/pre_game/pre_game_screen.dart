@@ -569,6 +569,7 @@ class PreGameScreen extends ConsumerWidget {
           hintsEnabled: setup.hintsEnabled,
           timerSeconds: setup.timerEnabled ? setup.timerMinutes * 60 : 0,
           isBlankRound: isBlankRound,
+          reducedMotion: setup.reducedMotion,
           suddenDeathEnabled: setup.suddenDeathEnabled,
         ),
       ),

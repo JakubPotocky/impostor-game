@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:impostor/core/feedback_service.dart';
+import 'package:impostor/core/motion.dart';
 import 'package:impostor/core/role_assignment_service.dart';
 import 'package:impostor/features/end/end_screen.dart';
 
@@ -16,6 +17,7 @@ class VotingScreen extends StatefulWidget {
     required this.word,
     this.timerSeconds = 0,
     this.isBlankRound = false,
+    this.reducedMotion = false,
     this.suddenDeathEnabled = true,
   });
 
@@ -27,6 +29,9 @@ class VotingScreen extends StatefulWidget {
 
   /// Whether this is a blank round (nobody has the word).
   final bool isBlankRound;
+
+  /// Whether high-intensity animations should be reduced.
+  final bool reducedMotion;
 
   /// Whether sudden death mode is enabled.
   final bool suddenDeathEnabled;
@@ -81,7 +86,10 @@ class _VotingScreenState extends State<VotingScreen>
     // Sudden death animation controllers.
     _suddenDeathCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: AppMotion.resolveDuration(
+        AppMotion.voteCritical,
+        reduced: widget.reducedMotion,
+      ),
     );
     _suddenDeathScale = Tween(begin: 3.0, end: 1.0).animate(
       CurvedAnimation(parent: _suddenDeathCtrl, curve: Curves.elasticOut),
@@ -95,7 +103,10 @@ class _VotingScreenState extends State<VotingScreen>
 
     _suddenDeathPulseCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1000),
+      duration: AppMotion.resolveDuration(
+        const Duration(milliseconds: 1000),
+        reduced: widget.reducedMotion,
+      ),
     );
     _suddenDeathPulse = Tween(begin: 1.0, end: 1.08).animate(
       CurvedAnimation(parent: _suddenDeathPulseCtrl, curve: Curves.easeInOut),
@@ -258,7 +269,11 @@ class _VotingScreenState extends State<VotingScreen>
       final result = _checkWinCondition();
       if (result != null) {
         _gameEnding = true;
-        Future.delayed(const Duration(milliseconds: 800), () {
+        Future.delayed(
+            AppMotion.resolveDuration(
+              const Duration(milliseconds: 800),
+              reduced: widget.reducedMotion,
+            ), () {
           if (!mounted) return;
           Navigator.of(context).pushReplacement(
             PageRouteBuilder(
@@ -268,6 +283,7 @@ class _VotingScreenState extends State<VotingScreen>
                 word: widget.word,
                 result: result,
                 killedIndices: _killed.toList(),
+                reducedMotion: widget.reducedMotion,
               ),
               transitionsBuilder:
                   (context, animation, secondaryAnimation, child) {
@@ -277,7 +293,10 @@ class _VotingScreenState extends State<VotingScreen>
                   child: child,
                 );
               },
-              transitionDuration: const Duration(milliseconds: 400),
+              transitionDuration: AppMotion.resolveDuration(
+                AppMotion.setupEnter,
+                reduced: widget.reducedMotion,
+              ),
             ),
           );
         });

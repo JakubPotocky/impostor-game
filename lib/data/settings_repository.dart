@@ -10,6 +10,7 @@ class SettingsRepository {
   static const String _keyTimerEnabled = 'timerEnabled';
   static const String _keyTimerMinutes = 'timerMinutes';
   static const String _keyHintsEnabled = 'hintsEnabled';
+  static const String _keyReducedMotion = 'reducedMotion';
   static const String _keySuddenDeathEnabled = 'suddenDeathEnabled';
   static const String _keyDarkMode = 'darkMode';
   static const String _keyLastSeenVersion = 'lastSeenVersion';
@@ -81,6 +82,14 @@ class SettingsRepository {
 
   Future<void> saveHintsEnabled(bool enabled) async {
     await _safeBox.put(_keyHintsEnabled, enabled);
+  }
+
+  bool getReducedMotion({bool defaultValue = false}) {
+    return _safeBox.get(_keyReducedMotion, defaultValue: defaultValue) as bool;
+  }
+
+  Future<void> saveReducedMotion(bool enabled) async {
+    await _safeBox.put(_keyReducedMotion, enabled);
   }
 
   bool getSuddenDeathEnabled({bool defaultValue = true}) {

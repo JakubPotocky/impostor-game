@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:impostor/core/feedback_service.dart';
+import 'package:impostor/core/motion.dart';
+import 'package:impostor/data/game_history_repository.dart';
 import 'package:impostor/features/game_setup/game_setup_notifier.dart';
 import 'package:impostor/features/players/players_notifier.dart';
 import 'package:impostor/features/pre_game/pre_game_screen.dart';
@@ -39,22 +41,40 @@ class _TeamModeScreenState extends ConsumerState<TeamModeScreen>
   late Animation<double> _fadeIn;
   late AnimationController _revealCtrl;
   late Animation<double> _revealScale;
+  late bool _reducedMotion;
 
   @override
   void initState() {
     super.initState();
+    _reducedMotion = ref.read(gameSetupProvider).reducedMotion;
     _fadeCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 400),
+      duration: AppMotion.resolveDuration(
+        AppMotion.setupEnter,
+        reduced: _reducedMotion,
+      ),
     );
-    _fadeIn = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOut);
+    _fadeIn = CurvedAnimation(
+      parent: _fadeCtrl,
+      curve:
+          AppMotion.resolveCurve(AppMotion.calmCurve, reduced: _reducedMotion),
+    );
 
     _revealCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 500),
+      duration: AppMotion.resolveDuration(
+        AppMotion.revealEnter,
+        reduced: _reducedMotion,
+      ),
     );
     _revealScale = Tween(begin: 0.7, end: 1.0).animate(
-      CurvedAnimation(parent: _revealCtrl, curve: Curves.elasticOut),
+      CurvedAnimation(
+        parent: _revealCtrl,
+        curve: AppMotion.resolveCurve(
+          AppMotion.dramaticCurve,
+          reduced: _reducedMotion,
+        ),
+      ),
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) => _setupGame());
@@ -176,6 +196,27 @@ class _TeamModeScreenState extends ConsumerState<TeamModeScreen>
     // Find which team the impostor ended up on.
     final impostorIdx = _assignments!.indexWhere((a) => a.isImpostor);
     final impostorTeam = _teamAssignments[impostorIdx] ?? 0;
+    final winnerNames = _assignments!
+        .asMap()
+        .entries
+        .where((entry) =>
+            (entry.value.isImpostor ? impostorTeam : entry.value.team) !=
+            impostorTeam)
+        .map((entry) => entry.value.playerName)
+        .toList();
+
+    ref.read(gameHistoryRepositoryProvider).addGame(
+          GameRecord(
+            timestamp: DateTime.now(),
+            word: '${_wordA!} | ${_wordB!}',
+            mode: 'team',
+            impostorsWon: false,
+            players: _assignments!.map((a) => a.playerName).toList(),
+            impostorNames: [_assignments![impostorIdx].playerName],
+            winnerNames: winnerNames,
+            killedNames: const [],
+          ),
+        );
 
     _feedback.victory();
 

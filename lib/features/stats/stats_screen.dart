@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:impostor/core/streaks.dart';
 import 'package:impostor/data/game_history_repository.dart';
 
 /// Screen showing game history and player stats.
@@ -14,6 +15,7 @@ class StatsScreen extends ConsumerWidget {
 
     // Compute player stats.
     final playerStats = _computePlayerStats(games);
+    final streaks = computePlayerStreaks(games);
 
     return Scaffold(
       appBar: AppBar(
@@ -63,7 +65,7 @@ class StatsScreen extends ConsumerWidget {
                     child: TabBarView(
                       children: [
                         _RecentGamesTab(games: games),
-                        _PlayerStatsTab(stats: playerStats),
+                        _PlayerStatsTab(stats: playerStats, streaks: streaks),
                       ],
                     ),
                   ),
@@ -163,6 +165,23 @@ class _RecentGamesTab extends StatelessWidget {
               children: [
                 Row(
                   children: [
+                    Container(
+                      margin: const EdgeInsets.only(right: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        game.mode.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          color: colorScheme.onSurface.withAlpha(170),
+                        ),
+                      ),
+                    ),
                     Icon(
                       isImpostorWin
                           ? Icons.warning_amber_rounded
@@ -222,6 +241,24 @@ class _RecentGamesTab extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 4),
+                if (game.winnerNames.isNotEmpty)
+                  Row(
+                    children: [
+                      Icon(Icons.local_fire_department_rounded,
+                          size: 14, color: Colors.orange.shade300),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Winners: ${game.winnerNames.join(", ")}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colorScheme.onSurface.withAlpha(140),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                if (game.winnerNames.isNotEmpty) const SizedBox(height: 4),
                 Row(
                   children: [
                     Icon(Icons.people_alt_rounded,
@@ -255,8 +292,9 @@ class _RecentGamesTab extends StatelessWidget {
 // Player stats tab
 // ---------------------------------------------------------------------------
 class _PlayerStatsTab extends StatelessWidget {
-  const _PlayerStatsTab({required this.stats});
+  const _PlayerStatsTab({required this.stats, required this.streaks});
   final Map<String, _PlayerStat> stats;
+  final Map<String, PlayerStreak> streaks;
 
   @override
   Widget build(BuildContext context) {
@@ -293,7 +331,7 @@ class _PlayerStatsTab extends StatelessWidget {
             title: Text(s.name,
                 style: const TextStyle(fontWeight: FontWeight.w600)),
             subtitle: Text(
-              '${s.totalGames} games · ${s.timesImpostor} as impostor',
+              '${s.totalGames} games · ${s.timesImpostor} as impostor · best 🔥 ${streaks[s.name]?.best ?? 0}',
               style: TextStyle(
                 fontSize: 12,
                 color: colorScheme.onSurface.withAlpha(120),
@@ -317,6 +355,15 @@ class _PlayerStatsTab extends StatelessWidget {
                     color: colorScheme.onSurface.withAlpha(120),
                   ),
                 ),
+                if ((streaks[s.name]?.current ?? 0) >= 2)
+                  Text(
+                    '🔥 ${streaks[s.name]!.current}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.orange.shade400,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
               ],
             ),
           ),

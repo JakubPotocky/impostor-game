@@ -137,9 +137,52 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
 
-          // --- Language selector ---
+          // --- Reduced motion ---
           StaggeredFadeIn(
             delay: 1,
+            child: SetupCard(
+              icon: Icons.motion_photos_off_rounded,
+              iconColor: Colors.blueGrey,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Reduced Motion',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        setupState.reducedMotion
+                            ? 'Simpler transitions'
+                            : 'Full cinematic transitions',
+                        style: TextStyle(
+                          color: colorScheme.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Switch(
+                    value: setupState.reducedMotion,
+                    onChanged: (v) => ref
+                        .read(gameSetupProvider.notifier)
+                        .setReducedMotion(v),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // --- Language selector ---
+          StaggeredFadeIn(
+            delay: 2,
             child: SetupCard(
               icon: Icons.translate_rounded,
               iconColor: Colors.teal,
@@ -191,7 +234,7 @@ class SettingsScreen extends ConsumerWidget {
 
           // --- Theme toggles ---
           StaggeredFadeIn(
-            delay: 2,
+            delay: 3,
             child: SetupCard(
               icon: Icons.category_rounded,
               iconColor: Colors.orange,
@@ -265,7 +308,7 @@ class SettingsScreen extends ConsumerWidget {
 
           // --- Manage themes (browse words, add category) ---
           StaggeredFadeIn(
-            delay: 3,
+            delay: 4,
             child: SetupCard(
               icon: Icons.edit_note_rounded,
               iconColor: Colors.deepPurple,

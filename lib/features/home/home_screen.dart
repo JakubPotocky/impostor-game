@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:impostor/core/constants.dart';
 import 'package:impostor/core/widgets.dart';
-import 'package:impostor/features/onboarding/onboarding_screen.dart';
 import 'package:impostor/features/players/players_screen.dart';
 import 'package:impostor/features/changelog/changelog_screen.dart';
+import 'package:impostor/features/rules/rules_screen.dart';
 import 'package:impostor/features/settings/settings_screen.dart';
 import 'package:impostor/features/stats/stats_screen.dart';
 import 'package:impostor/features/stats/word_analytics_screen.dart';
@@ -204,7 +204,7 @@ class HomeScreen extends ConsumerWidget {
                       child: OutlinedButton.icon(
                         onPressed: () {
                           Navigator.of(context).push(
-                            createSlideRoute(const OnboardingScreen()),
+                            createSlideRoute(const RulesScreen()),
                           );
                         },
                         icon: const Icon(Icons.help_outline_rounded),

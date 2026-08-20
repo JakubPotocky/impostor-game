@@ -10,6 +10,7 @@ class GameSetupState {
     this.timerEnabled = false,
     this.timerMinutes = 2,
     this.hintsEnabled = false,
+    this.reducedMotion = false,
     this.suddenDeathEnabled = true,
     this.darkMode = true,
   });
@@ -22,6 +23,7 @@ class GameSetupState {
   final bool timerEnabled;
   final int timerMinutes;
   final bool hintsEnabled;
+  final bool reducedMotion;
   final bool suddenDeathEnabled;
   final bool darkMode;
 
@@ -34,6 +36,7 @@ class GameSetupState {
     bool? timerEnabled,
     int? timerMinutes,
     bool? hintsEnabled,
+    bool? reducedMotion,
     bool? suddenDeathEnabled,
     bool? darkMode,
   }) {
@@ -44,6 +47,7 @@ class GameSetupState {
       timerEnabled: timerEnabled ?? this.timerEnabled,
       timerMinutes: timerMinutes ?? this.timerMinutes,
       hintsEnabled: hintsEnabled ?? this.hintsEnabled,
+      reducedMotion: reducedMotion ?? this.reducedMotion,
       suddenDeathEnabled: suddenDeathEnabled ?? this.suddenDeathEnabled,
       darkMode: darkMode ?? this.darkMode,
     );
@@ -60,6 +64,7 @@ class GameSetupState {
           timerEnabled == other.timerEnabled &&
           timerMinutes == other.timerMinutes &&
           hintsEnabled == other.hintsEnabled &&
+          reducedMotion == other.reducedMotion &&
           suddenDeathEnabled == other.suddenDeathEnabled &&
           darkMode == other.darkMode;
 
@@ -71,6 +76,7 @@ class GameSetupState {
       timerEnabled,
       timerMinutes,
       hintsEnabled,
+      reducedMotion,
       suddenDeathEnabled,
       darkMode);
 

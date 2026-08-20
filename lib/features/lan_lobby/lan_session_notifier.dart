@@ -242,8 +242,9 @@ class LanSessionNotifier extends Notifier<LanSessionState> {
         final playerName = msg.payload['playerName'] as String?;
         if (playerName == null) return;
         final updated = state.devices.map((d) {
-          if (d.deviceId == deviceId)
+          if (d.deviceId == deviceId) {
             return d.copyWith(selectedPlayerName: playerName);
+          }
           return d;
         }).toList();
         state = state.copyWith(devices: updated);

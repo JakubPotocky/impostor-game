@@ -6,6 +6,7 @@ import 'package:impostor/core/constants.dart';
 import 'package:impostor/core/role_assignment_service.dart';
 import 'package:impostor/core/validators.dart';
 import 'package:impostor/core/widgets.dart';
+import 'package:impostor/core/word_hint_service.dart';
 import 'package:impostor/core/word_picker_service.dart';
 import 'package:impostor/features/game_setup/game_setup_notifier.dart';
 import 'package:impostor/features/players/players_notifier.dart';
@@ -540,6 +541,11 @@ class PreGameScreen extends ConsumerWidget {
     final word = wordIndex < translatedWords.length
         ? translatedWords[wordIndex]
         : englishWords[wordIndex];
+    final impostorHintWord = pickImpostorHintWord(
+      themeWords: translatedWords.isNotEmpty ? translatedWords : englishWords,
+      secretWord: word,
+      random: random,
+    );
 
     List<RoleAssignment> assignments;
     if (isBlankRound) {
@@ -567,6 +573,7 @@ class PreGameScreen extends ConsumerWidget {
           word: word,
           themeName: theme,
           hintsEnabled: setup.hintsEnabled,
+          impostorHintWord: impostorHintWord,
           timerSeconds: setup.timerEnabled ? setup.timerMinutes * 60 : 0,
           isBlankRound: isBlankRound,
           reducedMotion: setup.reducedMotion,

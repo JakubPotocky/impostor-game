@@ -7,6 +7,7 @@ import 'package:impostor/core/feedback_service.dart';
 import 'package:impostor/core/motion.dart';
 import 'package:impostor/core/role_assignment_service.dart';
 import 'package:impostor/core/streaks.dart';
+import 'package:impostor/core/word_hint_service.dart';
 import 'package:impostor/core/widgets.dart';
 import 'package:impostor/data/game_history_repository.dart';
 import 'package:impostor/data/word_vote_repository.dart';
@@ -179,6 +180,11 @@ class _EndScreenState extends ConsumerState<EndScreen>
     final word = wordIndex < translatedWords.length
         ? translatedWords[wordIndex]
         : englishWords[wordIndex];
+    final impostorHintWord = pickImpostorHintWord(
+      themeWords: translatedWords.isNotEmpty ? translatedWords : englishWords,
+      secretWord: word,
+      random: random,
+    );
 
     List<RoleAssignment> assignments;
     if (isBlankRound) {
@@ -206,6 +212,7 @@ class _EndScreenState extends ConsumerState<EndScreen>
           word: word,
           themeName: theme,
           hintsEnabled: setup.hintsEnabled,
+          impostorHintWord: impostorHintWord,
           timerSeconds: setup.timerEnabled ? setup.timerMinutes * 60 : 0,
           isBlankRound: isBlankRound,
           reducedMotion: setup.reducedMotion,

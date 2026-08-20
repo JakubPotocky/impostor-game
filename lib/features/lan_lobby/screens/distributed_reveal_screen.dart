@@ -21,6 +21,7 @@ class _DistributedRevealScreenState
   late final List<RoleAssignment> _assignments;
   late final String _word;
   late final bool _hintsEnabled;
+  late final String? _impostorHintWord;
   late final bool _reducedMotion;
   int _currentIndex = 0;
   bool _revealed = false;
@@ -47,14 +48,14 @@ class _DistributedRevealScreenState
         .toList();
     _word = widget.assignmentPayload['word'] as String? ?? '';
     _hintsEnabled = widget.assignmentPayload['hintsEnabled'] as bool? ?? false;
-    _reducedMotion = widget.assignmentPayload['reducedMotion'] as bool? ?? false;
+    _impostorHintWord = widget.assignmentPayload['impostorHintWord'] as String?;
+    _reducedMotion =
+        widget.assignmentPayload['reducedMotion'] as bool? ?? false;
   }
 
   void _listenForAllComplete() {
-    _allRevealsSub = ref
-        .read(lanSessionProvider.notifier)
-        .allRevealsStream
-        .listen((_) {
+    _allRevealsSub =
+        ref.read(lanSessionProvider.notifier).allRevealsStream.listen((_) {
       if (!mounted || !_done) return;
       // When host signals all reveals complete, pop back to waiting room.
       Navigator.of(context).pop();
@@ -107,18 +108,19 @@ class _DistributedRevealScreenState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.done_all_rounded, size: 72, color: colorScheme.primary),
+              Icon(Icons.done_all_rounded,
+                  size: 72, color: colorScheme.primary),
               const SizedBox(height: 16),
               Text(
                 'All your reveals done!',
-                style:
-                    textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                style: textTheme.headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               Text(
                 'Waiting for other devices to finish…',
-                style:
-                    TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 15),
+                style: TextStyle(
+                    color: colorScheme.onSurfaceVariant, fontSize: 15),
               ),
               const SizedBox(height: 20),
               _RevealProgressBar(
@@ -158,6 +160,7 @@ class _DistributedRevealScreenState
                           isImpostor: isImpostor,
                           word: word,
                           hintsEnabled: _hintsEnabled,
+                          impostorHintWord: _impostorHintWord,
                           reducedMotion: _reducedMotion,
                         )
                       : _HiddenCard(
@@ -254,6 +257,7 @@ class _RevealCard extends StatelessWidget {
     required this.isImpostor,
     required this.word,
     required this.hintsEnabled,
+    required this.impostorHintWord,
     required this.reducedMotion,
   });
 
@@ -261,6 +265,7 @@ class _RevealCard extends StatelessWidget {
   final bool isImpostor;
   final String word;
   final bool hintsEnabled;
+  final String? impostorHintWord;
   final bool reducedMotion;
 
   @override
@@ -270,9 +275,7 @@ class _RevealCard extends StatelessWidget {
 
     return Card(
       elevation: 4,
-      color: isImp
-          ? colorScheme.errorContainer
-          : colorScheme.primaryContainer,
+      color: isImp ? colorScheme.errorContainer : colorScheme.primaryContainer,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Container(
         width: double.infinity,
@@ -310,12 +313,14 @@ class _RevealCard extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-            if (!isImp && hintsEnabled && word.isNotEmpty) ...[
+            if (isImp &&
+                hintsEnabled &&
+                (impostorHintWord ?? '').trim().isNotEmpty) ...[
               const SizedBox(height: 12),
               Text(
-                'Hint: ${word[0]}${'_' * (word.length - 1)} (${word.length} letters)',
+                'Hint word: ${impostorHintWord!.trim()}',
                 style: TextStyle(
-                  color: colorScheme.onPrimaryContainer.withAlpha(160),
+                  color: colorScheme.onErrorContainer.withAlpha(180),
                   fontStyle: FontStyle.italic,
                   fontSize: 13,
                 ),

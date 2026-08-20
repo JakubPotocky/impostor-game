@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:impostor/core/role_assignment_service.dart';
+import 'package:impostor/core/word_hint_service.dart';
 import 'package:impostor/core/widgets.dart';
 import 'package:impostor/features/game_setup/game_setup_notifier.dart';
 import 'package:impostor/features/lan_lobby/lan_session_notifier.dart';
@@ -34,9 +35,9 @@ class _HostLobbyScreenState extends ConsumerState<HostLobbyScreen> {
   Future<void> _createLobby() async {
     final players = ref.read(playersProvider).players;
     await ref.read(lanSessionProvider.notifier).createLobby(
-      mode: widget.mode.name,
-      players: players,
-    );
+          mode: widget.mode.name,
+          players: players,
+        );
   }
 
   @override
@@ -138,9 +139,8 @@ class _HostLobbyScreenState extends ConsumerState<HostLobbyScreen> {
     final allPlayers = ref.read(playersProvider).players;
     final setup = ref.read(gameSetupProvider);
     final lanNotifier = ref.read(lanSessionProvider.notifier);
-    final enabledThemes = setup.selectedThemes
-        .where((name) => name != 'Team Pairs')
-        .toList();
+    final enabledThemes =
+        setup.selectedThemes.where((name) => name != 'Team Pairs').toList();
     if (enabledThemes.isEmpty) {
       setState(() => _starting = false);
       return;
@@ -175,6 +175,11 @@ class _HostLobbyScreenState extends ConsumerState<HostLobbyScreen> {
     final word = wordIndex < translatedWords.length
         ? translatedWords[wordIndex]
         : englishWords[wordIndex];
+    final impostorHintWord = pickImpostorHintWord(
+      themeWords: translatedWords.isNotEmpty ? translatedWords : englishWords,
+      secretWord: word,
+      random: random,
+    );
 
     List<RoleAssignment> allAssignments;
     if (isBlankRound) {
@@ -203,12 +208,15 @@ class _HostLobbyScreenState extends ConsumerState<HostLobbyScreen> {
       word: word,
       themeName: theme,
       hintsEnabled: setup.hintsEnabled,
+      impostorHintWord: impostorHintWord,
       reducedMotion: setup.reducedMotion,
     );
     lanNotifier.triggerStartGame();
 
     // Determine host's own subset (device index 0 = host, sorted by joinOrder).
-    final connectedDevices = ref.read(lanSessionProvider).devices
+    final connectedDevices = ref
+        .read(lanSessionProvider)
+        .devices
         .where((d) => d.connectionState == DeviceConnectionState.connected)
         .toList()
       ..sort((a, b) => a.joinOrder.compareTo(b.joinOrder));
@@ -227,6 +235,7 @@ class _HostLobbyScreenState extends ConsumerState<HostLobbyScreen> {
         word: word,
         themeName: theme,
         hintsEnabled: setup.hintsEnabled,
+        impostorHintWord: impostorHintWord,
         timerSeconds: setup.timerEnabled ? setup.timerMinutes * 60 : 0,
         isBlankRound: isBlankRound,
         reducedMotion: setup.reducedMotion,
@@ -351,10 +360,22 @@ class _DeviceTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final (icon, color) = switch (device.connectionState) {
-      DeviceConnectionState.connected => (Icons.check_circle_rounded, Colors.green),
-      DeviceConnectionState.stale => (Icons.hourglass_top_rounded, Colors.orange),
-      DeviceConnectionState.connecting => (Icons.pending_rounded, colorScheme.primary),
-      DeviceConnectionState.disconnected => (Icons.cancel_rounded, colorScheme.error),
+      DeviceConnectionState.connected => (
+          Icons.check_circle_rounded,
+          Colors.green
+        ),
+      DeviceConnectionState.stale => (
+          Icons.hourglass_top_rounded,
+          Colors.orange
+        ),
+      DeviceConnectionState.connecting => (
+          Icons.pending_rounded,
+          colorScheme.primary
+        ),
+      DeviceConnectionState.disconnected => (
+          Icons.cancel_rounded,
+          colorScheme.error
+        ),
     };
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),

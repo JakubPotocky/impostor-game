@@ -86,6 +86,7 @@ class LanSessionNotifier extends Notifier<LanSessionState> {
     required String word,
     required String themeName,
     required bool hintsEnabled,
+    required String? impostorHintWord,
     required bool reducedMotion,
   }) {
     if (!state.isHost) return;
@@ -121,6 +122,7 @@ class LanSessionNotifier extends Notifier<LanSessionState> {
           word: word,
           themeName: themeName,
           hintsEnabled: hintsEnabled,
+          impostorHintWord: impostorHintWord,
           reducedMotion: reducedMotion,
         ),
       );
@@ -146,9 +148,8 @@ class LanSessionNotifier extends Notifier<LanSessionState> {
       ));
       _startHeartbeats();
     } catch (_) {
-      state = state
-          .copyWith(phase: LanPhase.idle, role: LanRole.none)
-          .copyWith(error: 'Connection failed — is the host on the same network?');
+      state = state.copyWith(phase: LanPhase.idle, role: LanRole.none).copyWith(
+          error: 'Connection failed — is the host on the same network?');
     }
   }
 
@@ -195,10 +196,12 @@ class LanSessionNotifier extends Notifier<LanSessionState> {
     if (session == null) return;
 
     if (msg.protocolVersion != '1.0') {
-      _host.sendTo(fromDeviceId, LanMessage.joinRejected(
-        sessionId: session.sessionId,
-        reason: 'incompatible_version',
-      ));
+      _host.sendTo(
+          fromDeviceId,
+          LanMessage.joinRejected(
+            sessionId: session.sessionId,
+            reason: 'incompatible_version',
+          ));
       return;
     }
 
@@ -217,10 +220,12 @@ class LanSessionNotifier extends Notifier<LanSessionState> {
 
       case LanMessageType.joinRequest:
         final deviceId = msg.payload['deviceId'] as String? ?? fromDeviceId;
-        _host.sendTo(fromDeviceId, LanMessage.joinAccepted(
-          sessionId: session.sessionId,
-          deviceId: deviceId,
-        ));
+        _host.sendTo(
+            fromDeviceId,
+            LanMessage.joinAccepted(
+              sessionId: session.sessionId,
+              deviceId: deviceId,
+            ));
         final updated = state.devices.map((d) {
           if (d.deviceId == deviceId) {
             return d.copyWith(connectionState: DeviceConnectionState.connected);
@@ -235,15 +240,18 @@ class LanSessionNotifier extends Notifier<LanSessionState> {
         final playerName = msg.payload['playerName'] as String?;
         if (playerName == null) return;
         final updated = state.devices.map((d) {
-          if (d.deviceId == deviceId) return d.copyWith(selectedPlayerName: playerName);
+          if (d.deviceId == deviceId)
+            return d.copyWith(selectedPlayerName: playerName);
           return d;
         }).toList();
         state = state.copyWith(devices: updated);
-        _host.sendTo(fromDeviceId, LanMessage.playerIdentityConfirmed(
-          sessionId: session.sessionId,
-          deviceId: deviceId,
-          playerName: playerName,
-        ));
+        _host.sendTo(
+            fromDeviceId,
+            LanMessage.playerIdentityConfirmed(
+              sessionId: session.sessionId,
+              deviceId: deviceId,
+              playerName: playerName,
+            ));
         _broadcastLobbyState();
 
       case LanMessageType.heartbeat:
@@ -261,9 +269,11 @@ class LanSessionNotifier extends Notifier<LanSessionState> {
 
       case LanMessageType.revealProgressUpdate:
         final deviceId = msg.payload['deviceId'] as String? ?? fromDeviceId;
-        final completed = (msg.payload['revealsCompleted'] as num?)?.toInt() ?? 0;
+        final completed =
+            (msg.payload['revealsCompleted'] as num?)?.toInt() ?? 0;
         final total = (msg.payload['revealsTotal'] as num?)?.toInt() ?? 0;
-        final updated = Map<String, DeviceRevealProgress>.from(state.revealProgress);
+        final updated =
+            Map<String, DeviceRevealProgress>.from(state.revealProgress);
         updated[deviceId] = DeviceRevealProgress(
           deviceId: deviceId,
           completed: completed,
@@ -298,15 +308,23 @@ class LanSessionNotifier extends Notifier<LanSessionState> {
 
       case LanMessageType.joinRejected:
         final reason = msg.payload['reason'] as String? ?? 'rejected';
-        state = state.copyWith(phase: LanPhase.idle, role: LanRole.none).copyWith(error: reason);
+        state = state
+            .copyWith(phase: LanPhase.idle, role: LanRole.none)
+            .copyWith(error: reason);
 
       case LanMessageType.lobbyStateSync:
-        final players = (msg.payload['players'] as List?)?.cast<String>() ?? state.players;
-        final devicesJson = (msg.payload['devices'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+        final players =
+            (msg.payload['players'] as List?)?.cast<String>() ?? state.players;
+        final devicesJson =
+            (msg.payload['devices'] as List?)?.cast<Map<String, dynamic>>() ??
+                [];
         final devices = devicesJson.map(ConnectedDevice.fromJson).toList();
         final sessionJson = msg.payload['session'] as Map<String, dynamic>?;
-        final session = sessionJson != null ? LobbySession.fromJson(sessionJson) : state.session;
-        state = state.copyWith(session: session, players: players, devices: devices);
+        final session = sessionJson != null
+            ? LobbySession.fromJson(sessionJson)
+            : state.session;
+        state = state.copyWith(
+            session: session, players: players, devices: devices);
 
       case LanMessageType.heartbeat:
         _client.send(LanMessage.heartbeat(
@@ -324,9 +342,11 @@ class LanSessionNotifier extends Notifier<LanSessionState> {
 
       case LanMessageType.revealProgressUpdate:
         final deviceId = msg.payload['deviceId'] as String? ?? '';
-        final completed = (msg.payload['revealsCompleted'] as num?)?.toInt() ?? 0;
+        final completed =
+            (msg.payload['revealsCompleted'] as num?)?.toInt() ?? 0;
         final total = (msg.payload['revealsTotal'] as num?)?.toInt() ?? 0;
-        final updated = Map<String, DeviceRevealProgress>.from(state.revealProgress);
+        final updated =
+            Map<String, DeviceRevealProgress>.from(state.revealProgress);
         updated[deviceId] = DeviceRevealProgress(
           deviceId: deviceId,
           completed: completed,
@@ -350,17 +370,20 @@ class LanSessionNotifier extends Notifier<LanSessionState> {
 
   void _onHostDisconnected() {
     if (!state.isClient) return;
-    state = state.copyWith(phase: LanPhase.idle, role: LanRole.none)
+    state = state
+        .copyWith(phase: LanPhase.idle, role: LanRole.none)
         .copyWith(error: 'Host disconnected');
     _heartbeatTimer?.cancel();
   }
 
   // ── Streams for UI consumption ────────────────────────────────────────────
 
-  final _assignmentController = StreamController<Map<String, dynamic>>.broadcast();
+  final _assignmentController =
+      StreamController<Map<String, dynamic>>.broadcast();
   final _allRevealsController = StreamController<void>.broadcast();
 
-  Stream<Map<String, dynamic>> get assignmentStream => _assignmentController.stream;
+  Stream<Map<String, dynamic>> get assignmentStream =>
+      _assignmentController.stream;
   Stream<void> get allRevealsStream => _allRevealsController.stream;
 
   // ── Internal helpers ──────────────────────────────────────────────────────
@@ -368,7 +391,9 @@ class LanSessionNotifier extends Notifier<LanSessionState> {
   List<ConnectedDevice> _upsertDevice(ConnectedDevice device) {
     final existing = state.devices.any((d) => d.deviceId == device.deviceId);
     if (existing) {
-      return state.devices.map((d) => d.deviceId == device.deviceId ? device : d).toList();
+      return state.devices
+          .map((d) => d.deviceId == device.deviceId ? device : d)
+          .toList();
     }
     return [...state.devices, device];
   }
@@ -420,7 +445,8 @@ class LanSessionNotifier extends Notifier<LanSessionState> {
     _heartbeatTimer = Timer.periodic(const Duration(seconds: 2), (_) {
       final session = state.session;
       if (session == null) return;
-      final msg = LanMessage.heartbeat(sessionId: session.sessionId, deviceId: _myDeviceId);
+      final msg = LanMessage.heartbeat(
+          sessionId: session.sessionId, deviceId: _myDeviceId);
       if (state.isHost) {
         _host.broadcast(msg);
       } else if (state.isClient) {
@@ -476,6 +502,7 @@ class LanSessionNotifier extends Notifier<LanSessionState> {
   }
 }
 
-final lanSessionProvider = NotifierProvider<LanSessionNotifier, LanSessionState>(
+final lanSessionProvider =
+    NotifierProvider<LanSessionNotifier, LanSessionState>(
   LanSessionNotifier.new,
 );

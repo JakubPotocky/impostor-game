@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:impostor/core/achievements.dart';
 import 'package:impostor/core/animated_effects.dart';
 import 'package:impostor/core/feedback_service.dart';
 import 'package:impostor/core/motion.dart';
@@ -9,6 +10,7 @@ import 'package:impostor/core/role_assignment_service.dart';
 import 'package:impostor/core/streaks.dart';
 import 'package:impostor/core/word_hint_service.dart';
 import 'package:impostor/core/widgets.dart';
+import 'package:impostor/data/achievement_repository.dart';
 import 'package:impostor/data/game_history_repository.dart';
 import 'package:impostor/data/word_vote_repository.dart';
 import 'package:impostor/features/game_setup/game_setup_notifier.dart';
@@ -52,6 +54,7 @@ class _EndScreenState extends ConsumerState<EndScreen>
   bool? _vote;
   bool _historySaved = false;
   String? _hotStreakMessage;
+  List<_PlayerAchievement> _newlyUnlockedAchievements = [];
   late AnimationController _ctrl;
   late Animation<double> _fadeIn;
   late Animation<double> _slideUp;
@@ -83,6 +86,7 @@ class _EndScreenState extends ConsumerState<EndScreen>
     _historySaved = true;
     final repo = ref.read(gameHistoryRepositoryProvider);
     final winners = _winnerNames();
+    final isBlankRound = widget.result == GameResult.blankRound;
     repo.addGame(GameRecord(
       timestamp: DateTime.now(),
       word: widget.word,
@@ -97,6 +101,7 @@ class _EndScreenState extends ConsumerState<EndScreen>
       killedNames: widget.killedIndices
           .map((i) => widget.assignments[i].playerName)
           .toList(),
+      isBlankRound: isBlankRound,
     ));
 
     final updated = [
@@ -114,6 +119,7 @@ class _EndScreenState extends ConsumerState<EndScreen>
         killedNames: widget.killedIndices
             .map((i) => widget.assignments[i].playerName)
             .toList(),
+        isBlankRound: isBlankRound,
       ),
       ...repo.getGames(),
     ];
@@ -121,15 +127,32 @@ class _EndScreenState extends ConsumerState<EndScreen>
     final hot = winners
         .where((name) => (streaks[name]?.current ?? 0) >= 2)
         .toList(growable: false);
-    if (hot.isNotEmpty && mounted) {
-      hot.sort((a, b) =>
-          (streaks[b]?.current ?? 0).compareTo(streaks[a]?.current ?? 0));
-      final best = hot.first;
-      final value = streaks[best]!.current;
-      setState(() {
-        _hotStreakMessage = 'Hot streak! $best is on 🔥 $value';
-      });
+
+    // Evaluate achievements for every player in this game, not just winners
+    // — badges like Survivor or Blank Stare don't require winning.
+    final achievementRepo = ref.read(achievementRepositoryProvider);
+    final newlyUnlocked = <_PlayerAchievement>[];
+    for (final assignment in widget.assignments) {
+      final unlocked =
+          achievementRepo.evaluateAndUnlock(assignment.playerName, updated);
+      for (final u in unlocked) {
+        final badge =
+            achievementCatalog.firstWhere((b) => b.id == u.badgeId);
+        newlyUnlocked.add(_PlayerAchievement(assignment.playerName, badge));
+      }
     }
+
+    if (!mounted) return;
+    setState(() {
+      if (hot.isNotEmpty) {
+        hot.sort((a, b) =>
+            (streaks[b]?.current ?? 0).compareTo(streaks[a]?.current ?? 0));
+        final best = hot.first;
+        final value = streaks[best]!.current;
+        _hotStreakMessage = 'Hot streak! $best is on 🔥 $value';
+      }
+      _newlyUnlockedAchievements = newlyUnlocked;
+    });
   }
 
   List<String> _winnerNames() {
@@ -490,6 +513,12 @@ class _EndScreenState extends ConsumerState<EndScreen>
                               fontWeight: FontWeight.w700,
                             ),
                             textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                        if (_newlyUnlockedAchievements.isNotEmpty) ...[
+                          _AchievementUnlockBanner(
+                            unlocked: _newlyUnlockedAchievements,
                           ),
                           const SizedBox(height: 8),
                         ],
@@ -872,6 +901,65 @@ class _VoteButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Achievement unlock celebration
+// ---------------------------------------------------------------------------
+class _PlayerAchievement {
+  const _PlayerAchievement(this.playerName, this.achievement);
+  final String playerName;
+  final Achievement achievement;
+}
+
+class _AchievementUnlockBanner extends StatelessWidget {
+  const _AchievementUnlockBanner({required this.unlocked});
+  final List<_PlayerAchievement> unlocked;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.amber.withAlpha(30),
+        border: Border.all(color: Colors.amber.shade400.withAlpha(120)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: unlocked.map((u) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            child: Row(
+              children: [
+                Icon(u.achievement.icon, size: 18, color: Colors.amber.shade700),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text.rich(
+                    TextSpan(
+                      style: TextStyle(fontSize: 13, color: colorScheme.onSurface),
+                      children: [
+                        const TextSpan(
+                            text: '🏆 Achievement Unlocked: ',
+                            style: TextStyle(fontWeight: FontWeight.w700)),
+                        TextSpan(
+                          text: '${u.achievement.title} — ',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        TextSpan(text: u.playerName),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
       ),
     );
   }

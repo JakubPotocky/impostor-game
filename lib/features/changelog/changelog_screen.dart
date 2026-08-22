@@ -5,10 +5,21 @@ class ChangelogScreen extends StatelessWidget {
   const ChangelogScreen({super.key});
 
   /// Current app version.
-  static const currentVersion = '2.4.0';
+  static const currentVersion = '2.5.0';
 
   /// Ordered changelog entries (newest first).
   static const List<_ChangelogEntry> _entries = [
+    _ChangelogEntry(
+      version: '2.5.0',
+      date: 'August 22, 2026',
+      title: 'Achievements',
+      changes: [
+        'New Achievements screen — unlockable badges for every player, built from your game history.',
+        'Badges include Hot Streak, Master of Disguise, Survivor, Century Club, and more.',
+        'Earning a badge is celebrated right on the end screen the moment it happens.',
+        'Achievements are computed from existing game history, so past play already counts.',
+      ],
+    ),
     _ChangelogEntry(
       version: '2.4.0',
       date: 'August 20, 2026',

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:impostor/core/constants.dart';
+import 'package:impostor/data/achievement_repository.dart';
 import 'package:impostor/data/custom_theme_repository.dart';
 import 'package:impostor/data/game_history_repository.dart';
 import 'package:impostor/data/player_repository.dart';
@@ -35,6 +36,9 @@ Future<void> main() async {
   final gameHistoryRepo = GameHistoryRepository();
   await gameHistoryRepo.init();
 
+  final achievementRepo = AchievementRepository();
+  await achievementRepo.init();
+
   final hasSeenTutorial = settingsRepo.getHasSeenTutorial();
 
   runApp(
@@ -45,6 +49,7 @@ Future<void> main() async {
         customThemeRepositoryProvider.overrideWithValue(customThemeRepo),
         wordVoteRepositoryProvider.overrideWithValue(wordVoteRepo),
         gameHistoryRepositoryProvider.overrideWithValue(gameHistoryRepo),
+        achievementRepositoryProvider.overrideWithValue(achievementRepo),
       ],
       child: ImpostorApp(showOnboarding: !hasSeenTutorial),
     ),

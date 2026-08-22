@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:impostor/core/constants.dart';
 import 'package:impostor/core/widgets.dart';
+import 'package:impostor/features/achievements/achievements_screen.dart';
 import 'package:impostor/features/lan_lobby/screens/lobby_mode_screen.dart';
 import 'package:impostor/features/players/players_screen.dart';
 import 'package:impostor/features/changelog/changelog_screen.dart';
@@ -317,9 +318,39 @@ class HomeScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
 
-                  // --- What's New ---
+                  // --- Achievements ---
                   StaggeredFadeIn(
                     delay: 7,
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            createSlideRoute(const AchievementsScreen()),
+                          );
+                        },
+                        icon: const Icon(Icons.emoji_events_outlined),
+                        label: const Text(
+                          'Achievements',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          side: BorderSide(
+                            color: colorScheme.outline.withAlpha(80),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // --- What's New ---
+                  StaggeredFadeIn(
+                    delay: 8,
                     child: SizedBox(
                       width: double.infinity,
                       height: 52,
@@ -349,7 +380,7 @@ class HomeScreen extends ConsumerWidget {
 
                   // --- Settings ---
                   StaggeredFadeIn(
-                    delay: 8,
+                    delay: 9,
                     child: SizedBox(
                       width: double.infinity,
                       height: 52,

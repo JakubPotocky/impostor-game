@@ -61,6 +61,7 @@ class GameRecord {
     required this.impostorNames,
     required this.winnerNames,
     required this.killedNames,
+    this.isBlankRound = false,
   });
 
   final DateTime timestamp;
@@ -71,6 +72,7 @@ class GameRecord {
   final List<String> impostorNames;
   final List<String> winnerNames;
   final List<String> killedNames;
+  final bool isBlankRound;
 
   Map<String, dynamic> toJson() => {
         'timestamp': timestamp.toIso8601String(),
@@ -81,6 +83,7 @@ class GameRecord {
         'impostorNames': impostorNames,
         'winnerNames': winnerNames,
         'killedNames': killedNames,
+        'isBlankRound': isBlankRound,
       };
 
   factory GameRecord.fromJson(Map<String, dynamic> json) => GameRecord(
@@ -93,5 +96,6 @@ class GameRecord {
         winnerNames: ((json['winnerNames'] as List<dynamic>?) ?? const [])
             .cast<String>(),
         killedNames: (json['killedNames'] as List<dynamic>).cast<String>(),
+        isBlankRound: (json['isBlankRound'] as bool?) ?? false,
       );
 }

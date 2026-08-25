@@ -1,5 +1,34 @@
 import 'dart:math';
 
+/// Reason a round ended, beyond simply "somebody won via voting".
+enum RoundEndReason {
+  normalVoteResolution,
+  suddenDeath,
+  impostorGuessedWord,
+  blankRound,
+}
+
+/// Picks the discussion starter using weighted random.
+///
+/// Innocents have weight 1.0; impostors have weight 0.25 (4× less likely).
+/// In a blank round all players are impostors and the weights are equal,
+/// giving a uniform distribution.
+String pickStarter(List<RoleAssignment> assignments, Random random) {
+  final allImpostors = assignments.every((a) => a.isImpostor);
+  final weighted = assignments.map((a) {
+    final w = (allImpostors || !a.isImpostor) ? 1.0 : 0.25;
+    return (name: a.playerName, w: w);
+  }).toList();
+
+  final total = weighted.fold<double>(0, (sum, e) => sum + e.w);
+  var r = random.nextDouble() * total;
+  for (final e in weighted) {
+    r -= e.w;
+    if (r <= 0) return e.name;
+  }
+  return weighted.last.name;
+}
+
 /// Immutable model representing a player's assigned role in a round.
 class RoleAssignment {
   const RoleAssignment({

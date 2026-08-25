@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:impostor/core/animated_effects.dart';
@@ -82,6 +84,7 @@ class _RoleRevealScreenState extends State<RoleRevealScreen>
 
   static const _secureChannel = MethodChannel('com.impostor.impostor/secure');
   static const _feedback = FeedbackService();
+  final _random = Random();
 
   // Animations
   late AnimationController _fadeCtrl;
@@ -221,18 +224,23 @@ class _RoleRevealScreenState extends State<RoleRevealScreen>
 
   void _goToVoting() {
     final onComplete = widget.onComplete;
+    final votingAssignments = widget.votingAssignments ?? widget.assignments;
+    final starter = widget.isBlankRound
+        ? null
+        : pickStarter(votingAssignments, _random);
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
             onComplete != null
                 ? onComplete(context)
                 : VotingScreen(
-                    assignments: widget.votingAssignments ?? widget.assignments,
+                    assignments: votingAssignments,
                     word: widget.word,
                     timerSeconds: widget.timerSeconds,
                     isBlankRound: widget.isBlankRound,
                     reducedMotion: widget.reducedMotion,
                     suddenDeathEnabled: widget.suddenDeathEnabled,
+                    startingPlayerName: starter,
                   ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           final curved =

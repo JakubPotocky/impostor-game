@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
+import 'package:impostor/core/role_assignment_service.dart' show RoundEndReason;
 
 /// Provider for [GameHistoryRepository].
 final gameHistoryRepositoryProvider = Provider<GameHistoryRepository>((ref) {
@@ -61,6 +62,8 @@ class GameRecord {
     required this.impostorNames,
     required this.winnerNames,
     required this.killedNames,
+    this.endReason = RoundEndReason.normalVoteResolution,
+    this.startingPlayerName,
   });
 
   final DateTime timestamp;
@@ -71,6 +74,8 @@ class GameRecord {
   final List<String> impostorNames;
   final List<String> winnerNames;
   final List<String> killedNames;
+  final RoundEndReason endReason;
+  final String? startingPlayerName;
 
   Map<String, dynamic> toJson() => {
         'timestamp': timestamp.toIso8601String(),
@@ -81,6 +86,8 @@ class GameRecord {
         'impostorNames': impostorNames,
         'winnerNames': winnerNames,
         'killedNames': killedNames,
+        'endReason': endReason.name,
+        if (startingPlayerName != null) 'startingPlayerName': startingPlayerName,
       };
 
   factory GameRecord.fromJson(Map<String, dynamic> json) => GameRecord(
@@ -93,5 +100,10 @@ class GameRecord {
         winnerNames: ((json['winnerNames'] as List<dynamic>?) ?? const [])
             .cast<String>(),
         killedNames: (json['killedNames'] as List<dynamic>).cast<String>(),
+        endReason: RoundEndReason.values.firstWhere(
+          (r) => r.name == (json['endReason'] as String?),
+          orElse: () => RoundEndReason.normalVoteResolution,
+        ),
+        startingPlayerName: json['startingPlayerName'] as String?,
       );
 }

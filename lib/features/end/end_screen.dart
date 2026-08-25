@@ -33,6 +33,8 @@ class EndScreen extends ConsumerStatefulWidget {
     required this.result,
     required this.killedIndices,
     this.reducedMotion = false,
+    this.endReason = RoundEndReason.normalVoteResolution,
+    this.startingPlayerName,
   });
 
   final List<RoleAssignment> assignments;
@@ -40,6 +42,8 @@ class EndScreen extends ConsumerStatefulWidget {
   final GameResult result;
   final List<int> killedIndices;
   final bool reducedMotion;
+  final RoundEndReason endReason;
+  final String? startingPlayerName;
 
   @override
   ConsumerState<EndScreen> createState() => _EndScreenState();
@@ -97,6 +101,8 @@ class _EndScreenState extends ConsumerState<EndScreen>
       killedNames: widget.killedIndices
           .map((i) => widget.assignments[i].playerName)
           .toList(),
+      endReason: widget.endReason,
+      startingPlayerName: widget.startingPlayerName,
     ));
 
     final updated = [
@@ -114,6 +120,8 @@ class _EndScreenState extends ConsumerState<EndScreen>
         killedNames: widget.killedIndices
             .map((i) => widget.assignments[i].playerName)
             .toList(),
+        endReason: widget.endReason,
+        startingPlayerName: widget.startingPlayerName,
       ),
       ...repo.getGames(),
     ];
@@ -147,6 +155,16 @@ class _EndScreenState extends ConsumerState<EndScreen>
       case GameResult.blankRound:
         return const [];
     }
+  }
+
+  String _impostorWinSubtitle() {
+    return switch (widget.endReason) {
+      RoundEndReason.impostorGuessedWord =>
+        'Impostors won by guessing the secret word!',
+      RoundEndReason.suddenDeath =>
+        'The impostors outlasted innocents in Sudden Death!',
+      _ => 'The impostors managed to survive!',
+    };
   }
 
   void _quickRematch() {
@@ -497,7 +515,7 @@ class _EndScreenState extends ConsumerState<EndScreen>
                           isBlankRound
                               ? 'Nobody had the word — everyone was the impostor!'
                               : isImpostorWin
-                                  ? 'The impostors managed to survive!'
+                                  ? _impostorWinSubtitle()
                                   : 'All impostors have been found!',
                           style: TextStyle(
                             color: colorScheme.onSurface.withAlpha(170),

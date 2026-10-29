@@ -4,6 +4,7 @@ import 'package:impostor/core/achievements.dart';
 import 'package:impostor/core/animated_effects.dart';
 import 'package:impostor/core/difficulty_style.dart';
 import 'package:impostor/core/feedback_service.dart';
+import 'package:impostor/features/game_setup/feedback_provider.dart';
 import 'package:impostor/core/motion.dart';
 import 'package:impostor/core/role_assignment_service.dart';
 import 'package:impostor/core/streaks.dart';
@@ -69,7 +70,7 @@ class _EndScreenState extends ConsumerState<EndScreen>
   late Animation<double> _fadeIn;
   late Animation<double> _slideUp;
 
-  static const _feedback = FeedbackService();
+  FeedbackService get _feedback => ref.read(feedbackServiceProvider);
 
   @override
   void initState() {
@@ -246,6 +247,7 @@ class _EndScreenState extends ConsumerState<EndScreen>
         suddenDeathEnabled: setup.suddenDeathEnabled,
         startingPlayerName: round.startingPlayerName,
         wordKey: round.wordKey,
+        holdToReveal: setup.holdToReveal,
       );
     }
 

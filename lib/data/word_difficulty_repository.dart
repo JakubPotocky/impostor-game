@@ -31,6 +31,9 @@ class WordDifficultyRepository {
     return _box!;
   }
 
+  /// Box backing this repository, for full-app backup/restore.
+  Box<dynamic> get backupBox => _safeBox;
+
   /// Returns all stored ratings keyed by [WordKey.storageKey].
   Map<String, WordDifficulty> getAll() {
     final raw = _safeBox.get(_keyRatings) as String?;

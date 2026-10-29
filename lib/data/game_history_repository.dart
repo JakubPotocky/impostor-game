@@ -26,6 +26,9 @@ class GameHistoryRepository {
     return _box!;
   }
 
+  /// Box backing this repository, for full-app backup/restore.
+  Box<dynamic> get backupBox => _safeBox;
+
   /// Returns all stored game records, newest first.
   List<GameRecord> getGames() {
     final raw = _safeBox.get(_keyGames) as String?;

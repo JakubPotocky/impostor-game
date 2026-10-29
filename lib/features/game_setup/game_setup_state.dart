@@ -22,6 +22,9 @@ class GameSetupState {
     this.suddenDeathEnabled = true,
     this.darkMode = true,
     this.allowedDifficulties = allDifficulties,
+    this.soundEnabled = true,
+    this.hapticsEnabled = true,
+    this.holdToReveal = false,
   });
 
   static const Set<WordDifficulty> allDifficulties = {
@@ -47,6 +50,12 @@ class GameSetupState {
   /// Only words rated with one of these difficulties can be picked.
   final Set<WordDifficulty> allowedDifficulties;
 
+  final bool soundEnabled;
+  final bool hapticsEnabled;
+
+  /// Roles are only visible while the player holds a finger on the screen.
+  final bool holdToReveal;
+
   /// Whether the difficulty filter excludes anything.
   bool get isDifficultyFiltered =>
       !allowedDifficulties.containsAll(WordDifficulty.values);
@@ -65,6 +74,9 @@ class GameSetupState {
     bool? suddenDeathEnabled,
     bool? darkMode,
     Set<WordDifficulty>? allowedDifficulties,
+    bool? soundEnabled,
+    bool? hapticsEnabled,
+    bool? holdToReveal,
   }) {
     return GameSetupState(
       impostorCount: impostorCount ?? this.impostorCount,
@@ -78,6 +90,9 @@ class GameSetupState {
       suddenDeathEnabled: suddenDeathEnabled ?? this.suddenDeathEnabled,
       darkMode: darkMode ?? this.darkMode,
       allowedDifficulties: allowedDifficulties ?? this.allowedDifficulties,
+      soundEnabled: soundEnabled ?? this.soundEnabled,
+      hapticsEnabled: hapticsEnabled ?? this.hapticsEnabled,
+      holdToReveal: holdToReveal ?? this.holdToReveal,
     );
   }
 
@@ -96,7 +111,10 @@ class GameSetupState {
           reducedMotion == other.reducedMotion &&
           suddenDeathEnabled == other.suddenDeathEnabled &&
           darkMode == other.darkMode &&
-          setEquals(allowedDifficulties, other.allowedDifficulties);
+          setEquals(allowedDifficulties, other.allowedDifficulties) &&
+          soundEnabled == other.soundEnabled &&
+          hapticsEnabled == other.hapticsEnabled &&
+          holdToReveal == other.holdToReveal;
 
   @override
   int get hashCode => Object.hash(
@@ -110,7 +128,10 @@ class GameSetupState {
       reducedMotion,
       suddenDeathEnabled,
       darkMode,
-      Object.hashAllUnordered(allowedDifficulties));
+      Object.hashAllUnordered(allowedDifficulties),
+      soundEnabled,
+      hapticsEnabled,
+      holdToReveal);
 
   static bool _listEquals(List<String> a, List<String> b) {
     if (a.length != b.length) return false;

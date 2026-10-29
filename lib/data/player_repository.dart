@@ -15,6 +15,9 @@ class PlayerRepository {
     return _box!;
   }
 
+  /// Box backing this repository, for full-app backup/restore.
+  Box<String> get backupBox => _safeBox;
+
   /// Returns all stored player names in order.
   List<String> getPlayers() {
     return _safeBox.values.toList();

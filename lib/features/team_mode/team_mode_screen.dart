@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:impostor/core/feedback_service.dart';
+import 'package:impostor/features/game_setup/feedback_provider.dart';
 import 'package:impostor/core/motion.dart';
 import 'package:impostor/core/reveal_palette.dart';
 import 'package:impostor/data/game_history_repository.dart';
@@ -36,7 +37,7 @@ class _TeamModeScreenState extends ConsumerState<TeamModeScreen>
   bool _inSortingPhase = false;
   final Map<int, int> _teamAssignments = {}; // playerIndex -> team (0 or 1)
 
-  static const _feedback = FeedbackService();
+  FeedbackService get _feedback => ref.read(feedbackServiceProvider);
 
   late AnimationController _fadeCtrl;
   late Animation<double> _fadeIn;

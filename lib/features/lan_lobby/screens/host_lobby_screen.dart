@@ -7,6 +7,7 @@ import 'package:impostor/core/validators.dart';
 import 'package:impostor/core/widgets.dart';
 import 'package:impostor/features/game_setup/game_setup_notifier.dart';
 import 'package:impostor/features/game_setup/game_setup_state.dart';
+import 'package:impostor/features/game_setup/preset_card.dart';
 import 'package:impostor/features/game_setup/round_factory.dart';
 import 'package:impostor/features/lan_lobby/lan_round_launcher.dart';
 import 'package:impostor/features/lan_lobby/lan_session_notifier.dart';
@@ -80,6 +81,8 @@ class _HostLobbyScreenState extends ConsumerState<HostLobbyScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                 children: [
                   _LobbyInfoCard(session: session),
+                  const SizedBox(height: 16),
+                  const PresetCard(),
                   const SizedBox(height: 16),
                   const _ThemesCard(),
                   const SizedBox(height: 16),

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:impostor/core/word_difficulty.dart';
 import 'package:impostor/data/settings_repository.dart';
 import 'package:impostor/features/game_setup/game_setup_state.dart';
+import 'package:impostor/features/game_setup/round_preset.dart';
 
 /// Notifier for game configuration (impostor count, selected theme).
 class GameSetupNotifier extends Notifier<GameSetupState> {
@@ -23,6 +24,9 @@ class GameSetupNotifier extends Notifier<GameSetupState> {
       suddenDeathEnabled: _repo.getSuddenDeathEnabled(),
       darkMode: _repo.getDarkMode(),
       allowedDifficulties: _repo.getAllowedDifficulties(),
+      soundEnabled: _repo.getSoundEnabled(),
+      hapticsEnabled: _repo.getHapticsEnabled(),
+      holdToReveal: _repo.getHoldToReveal(),
     );
   }
 
@@ -80,6 +84,37 @@ class GameSetupNotifier extends Notifier<GameSetupState> {
   void setDarkMode(bool dark) {
     state = state.copyWith(darkMode: dark);
     _repo.saveDarkMode(dark);
+  }
+
+  void setSoundEnabled(bool enabled) {
+    state = state.copyWith(soundEnabled: enabled);
+    _repo.saveSoundEnabled(enabled);
+  }
+
+  void setHapticsEnabled(bool enabled) {
+    state = state.copyWith(hapticsEnabled: enabled);
+    _repo.saveHapticsEnabled(enabled);
+  }
+
+  void setHoldToReveal(bool enabled) {
+    state = state.copyWith(holdToReveal: enabled);
+    _repo.saveHoldToReveal(enabled);
+  }
+
+  /// Applies a preset's round settings and persists them, so they stay in
+  /// effect after a restart like any manually chosen setting.
+  void applyPreset(RoundPreset preset) {
+    state = preset.applyTo(state);
+    _repo
+      ..saveImpostorCount(state.impostorCount)
+      ..saveSelectedThemes(state.selectedThemes)
+      ..saveLanguage(state.language)
+      ..saveTimerEnabled(state.timerEnabled)
+      ..saveTimerMinutes(state.timerMinutes)
+      ..saveHintsEnabled(state.hintsEnabled)
+      ..saveThemeVisibilityMode(state.themeVisibilityMode.index)
+      ..saveSuddenDeathEnabled(state.suddenDeathEnabled)
+      ..saveAllowedDifficulties(state.allowedDifficulties);
   }
 
   /// Toggles whether words of [difficulty] can be picked.

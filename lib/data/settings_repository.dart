@@ -17,6 +17,9 @@ class SettingsRepository {
   static const String _keyDarkMode = 'darkMode';
   static const String _keyLastSeenVersion = 'lastSeenVersion';
   static const String _keyAllowedDifficulties = 'allowedDifficulties';
+  static const String _keySoundEnabled = 'soundEnabled';
+  static const String _keyHapticsEnabled = 'hapticsEnabled';
+  static const String _keyHoldToReveal = 'holdToReveal';
 
   Box<dynamic>? _box;
 
@@ -28,6 +31,9 @@ class SettingsRepository {
     assert(_box != null && _box!.isOpen, 'SettingsRepository not initialised');
     return _box!;
   }
+
+  /// Box backing this repository, for full-app backup/restore.
+  Box<dynamic> get backupBox => _safeBox;
 
   int getImpostorCount({int defaultValue = 1}) {
     return _safeBox.get(_keyImpostorCount, defaultValue: defaultValue) as int;
@@ -128,6 +134,27 @@ class SettingsRepository {
 
   Future<void> saveLastSeenVersion(String version) async {
     await _safeBox.put(_keyLastSeenVersion, version);
+  }
+
+  bool getSoundEnabled() =>
+      _safeBox.get(_keySoundEnabled, defaultValue: true) as bool;
+
+  Future<void> saveSoundEnabled(bool enabled) async {
+    await _safeBox.put(_keySoundEnabled, enabled);
+  }
+
+  bool getHapticsEnabled() =>
+      _safeBox.get(_keyHapticsEnabled, defaultValue: true) as bool;
+
+  Future<void> saveHapticsEnabled(bool enabled) async {
+    await _safeBox.put(_keyHapticsEnabled, enabled);
+  }
+
+  bool getHoldToReveal() =>
+      _safeBox.get(_keyHoldToReveal, defaultValue: false) as bool;
+
+  Future<void> saveHoldToReveal(bool enabled) async {
+    await _safeBox.put(_keyHoldToReveal, enabled);
   }
 
   /// Difficulties a word may have to be picked. Defaults to all of them, and

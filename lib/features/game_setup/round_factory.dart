@@ -7,6 +7,9 @@ import 'package:impostor/core/role_assignment_service.dart';
 import 'package:impostor/core/word_difficulty.dart';
 import 'package:impostor/core/word_hint_service.dart';
 import 'package:impostor/core/word_picker_service.dart';
+import 'package:impostor/core/word_weighting.dart';
+import 'package:impostor/data/theme_word.dart';
+import 'package:impostor/data/word_vote_repository.dart';
 import 'package:impostor/features/game_setup/game_setup_notifier.dart';
 import 'package:impostor/features/themes/themes_notifier.dart';
 import 'package:impostor/features/themes/themes_state.dart';
@@ -115,6 +118,7 @@ class RoundFactory {
     required WordDifficultyMap difficulties,
     required WordPickerService wordPicker,
     required Random random,
+    Map<String, WordVote> votes = const {},
   }) {
     final forceBlankRound = players.contains(blankRoundTrigger);
     final roster = players.where((p) => p != blankRoundTrigger).toList();
@@ -151,17 +155,27 @@ class RoundFactory {
 
     final eligibleThemes = eligibleByTheme.keys.toList();
     final theme = eligibleThemes[random.nextInt(eligibleThemes.length)];
-    final index = wordPicker.pickFromCandidates(
-      theme: theme,
-      candidates: eligibleByTheme[theme]!,
-      random: random,
-    );
-
     // Words are index-aligned across languages; translations may be shorter
     // than the English list, in which case the English entry is shown.
     final english = themes.getEntries(theme, 'en');
     final translated = themes.getEntries(theme, language);
-    final displayList = index < translated.length ? translated : english;
+    List<ThemeWord> displayListFor(int i) =>
+        i < translated.length ? translated : english;
+
+    final index = wordPicker.pickFromCandidates(
+      theme: theme,
+      candidates: eligibleByTheme[theme]!,
+      random: random,
+      weightOf: votes.isEmpty
+          ? null
+          : (i) => _voteWeight(
+                votes,
+                displayWord: displayListFor(i)[i].text,
+                englishWord: english[i].text,
+              ),
+    );
+
+    final displayList = displayListFor(index);
     final entry = displayList[index];
 
     final impostorHint = entry.hint ??
@@ -196,6 +210,23 @@ class RoundFactory {
   }
 }
 
+/// Pick weight from like/dislike votes. Votes are recorded against the word
+/// as shown, so a concept's votes are pooled across the languages it was
+/// played in (here: the current one and English).
+double _voteWeight(
+  Map<String, WordVote> votes, {
+  required String displayWord,
+  required String englishWord,
+}) {
+  var likes = votes[displayWord]?.likes ?? 0;
+  var dislikes = votes[displayWord]?.dislikes ?? 0;
+  if (englishWord != displayWord) {
+    likes += votes[englishWord]?.likes ?? 0;
+    dislikes += votes[englishWord]?.dislikes ?? 0;
+  }
+  return WordWeighting.fromVotes(likes: likes, dislikes: dislikes);
+}
+
 /// Builds a round from the current game setup, themes and ratings.
 RoundBuildResult createRound(WidgetRef ref, {required List<String> players}) {
   final themes = ref.read(themesProvider).valueOrNull;
@@ -214,5 +245,6 @@ RoundBuildResult createRound(WidgetRef ref, {required List<String> players}) {
     difficulties: ref.read(wordDifficultyProvider),
     wordPicker: ref.read(wordPickerServiceProvider),
     random: Random(),
+    votes: ref.read(wordVoteRepositoryProvider).getVotes(),
   );
 }

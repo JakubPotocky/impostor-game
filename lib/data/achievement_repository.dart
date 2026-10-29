@@ -27,6 +27,9 @@ class AchievementRepository {
     return _box!;
   }
 
+  /// Box backing this repository, for full-app backup/restore.
+  Box<dynamic> get backupBox => _safeBox;
+
   /// Returns every unlocked badge, across all players.
   List<UnlockedAchievement> getUnlocked() {
     final raw = _safeBox.get(_keyUnlocked) as String?;

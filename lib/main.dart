@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:impostor/core/constants.dart';
 import 'package:impostor/data/achievement_repository.dart';
+import 'package:impostor/data/backup_service.dart';
 import 'package:impostor/data/custom_theme_repository.dart';
 import 'package:impostor/data/game_history_repository.dart';
 import 'package:impostor/data/player_repository.dart';
+import 'package:impostor/data/preset_repository.dart';
 import 'package:impostor/data/settings_repository.dart';
 import 'package:impostor/data/word_difficulty_repository.dart';
 import 'package:impostor/data/word_vote_repository.dart';
@@ -43,6 +45,21 @@ Future<void> main() async {
   final wordDifficultyRepo = WordDifficultyRepository();
   await wordDifficultyRepo.init();
 
+  final presetRepo = PresetRepository();
+  await presetRepo.init();
+
+  // Section names are part of the backup format — never rename them.
+  final backupService = BackupService({
+    'players': playerRepo.backupBox,
+    'settings': settingsRepo.backupBox,
+    'customThemes': customThemeRepo.backupBox,
+    'wordVotes': wordVoteRepo.backupBox,
+    'gameHistory': gameHistoryRepo.backupBox,
+    'achievements': achievementRepo.backupBox,
+    'wordDifficulty': wordDifficultyRepo.backupBox,
+    'presets': presetRepo.backupBox,
+  });
+
   final hasSeenTutorial = settingsRepo.getHasSeenTutorial();
 
   runApp(
@@ -55,6 +72,8 @@ Future<void> main() async {
         gameHistoryRepositoryProvider.overrideWithValue(gameHistoryRepo),
         achievementRepositoryProvider.overrideWithValue(achievementRepo),
         wordDifficultyRepositoryProvider.overrideWithValue(wordDifficultyRepo),
+        presetRepositoryProvider.overrideWithValue(presetRepo),
+        backupServiceProvider.overrideWithValue(backupService),
       ],
       child: ImpostorApp(showOnboarding: !hasSeenTutorial),
     ),

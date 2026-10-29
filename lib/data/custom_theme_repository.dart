@@ -23,6 +23,9 @@ class CustomThemeRepository {
     return _box!;
   }
 
+  /// Box backing this repository, for full-app backup/restore.
+  Box<dynamic> get backupBox => _safeBox;
+
   /// Returns custom themes as a map of category name -> language -> words.
   ThemeCatalog getCustomThemes() {
     final raw = _safeBox.get(_keyThemes) as String?;

@@ -6,6 +6,7 @@ import 'package:impostor/core/widgets.dart';
 import 'package:impostor/features/game_setup/difficulty_filter_card.dart';
 import 'package:impostor/features/game_setup/game_setup_notifier.dart';
 import 'package:impostor/features/game_setup/game_setup_state.dart';
+import 'package:impostor/features/game_setup/preset_card.dart';
 import 'package:impostor/features/game_setup/round_factory.dart';
 import 'package:impostor/features/players/players_notifier.dart';
 import 'package:impostor/features/role_reveal/role_reveal_screen.dart';
@@ -45,6 +46,13 @@ class PreGameScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
         children: [
+          // --- Presets (first: loading one sets everything below) ---
+          const StaggeredFadeIn(
+            delay: 0,
+            child: PresetCard(),
+          ),
+          const SizedBox(height: 16),
+
           // --- Players summary ---
           StaggeredFadeIn(
             delay: 0,
@@ -581,6 +589,7 @@ class PreGameScreen extends ConsumerWidget {
               suddenDeathEnabled: setup.suddenDeathEnabled,
               startingPlayerName: round.startingPlayerName,
               wordKey: round.wordKey,
+              holdToReveal: setup.holdToReveal,
             ),
           ),
         );

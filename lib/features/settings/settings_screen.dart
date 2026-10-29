@@ -5,6 +5,8 @@ import 'package:impostor/core/widgets.dart';
 import 'package:impostor/data/theme_word.dart';
 import 'package:impostor/features/game_setup/difficulty_filter_card.dart';
 import 'package:impostor/features/game_setup/game_setup_notifier.dart';
+import 'package:impostor/features/onboarding/onboarding_screen.dart';
+import 'package:impostor/features/settings/backup_screen.dart';
 import 'package:impostor/features/themes/theme_detail_screen.dart';
 import 'package:impostor/features/themes/theme_export_screen.dart';
 import 'package:impostor/features/themes/themes_notifier.dart';
@@ -179,6 +181,57 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ],
               ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // --- Sound, haptics and reveal privacy ---
+          StaggeredFadeIn(
+            delay: 1,
+            child: _SwitchCard(
+              icon: setupState.soundEnabled
+                  ? Icons.volume_up_rounded
+                  : Icons.volume_off_rounded,
+              iconColor: Colors.cyan,
+              title: 'Sound',
+              subtitle: setupState.soundEnabled
+                  ? 'Click sounds on votes and timers'
+                  : 'Muted',
+              value: setupState.soundEnabled,
+              onChanged: (v) =>
+                  ref.read(gameSetupProvider.notifier).setSoundEnabled(v),
+            ),
+          ),
+          const SizedBox(height: 16),
+          StaggeredFadeIn(
+            delay: 1,
+            child: _SwitchCard(
+              icon: setupState.hapticsEnabled
+                  ? Icons.vibration_rounded
+                  : Icons.phone_android_rounded,
+              iconColor: Colors.pink,
+              title: 'Vibration',
+              subtitle: setupState.hapticsEnabled
+                  ? 'Vibrate on reveals, votes and wins'
+                  : 'Off — handy for quiet rooms',
+              value: setupState.hapticsEnabled,
+              onChanged: (v) =>
+                  ref.read(gameSetupProvider.notifier).setHapticsEnabled(v),
+            ),
+          ),
+          const SizedBox(height: 16),
+          StaggeredFadeIn(
+            delay: 1,
+            child: _SwitchCard(
+              icon: Icons.fingerprint_rounded,
+              iconColor: Colors.green,
+              title: 'Hold to Peek',
+              subtitle: setupState.holdToReveal
+                  ? 'Roles show only while you hold the screen'
+                  : 'Tap once to reveal your role',
+              value: setupState.holdToReveal,
+              onChanged: (v) =>
+                  ref.read(gameSetupProvider.notifier).setHoldToReveal(v),
             ),
           ),
           const SizedBox(height: 16),
@@ -462,6 +515,52 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
           ),
+          const SizedBox(height: 16),
+
+          // --- Data & help ---
+          StaggeredFadeIn(
+            delay: 5,
+            child: SetupCard(
+              icon: Icons.help_outline_rounded,
+              iconColor: Colors.blueGrey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Data & Help',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.backup_rounded),
+                    title: const Text('Backup & Restore'),
+                    subtitle: const Text('Keep your history safe or move it '
+                        'to a new phone'),
+                    trailing: const Icon(Icons.chevron_right, size: 20),
+                    onTap: () => Navigator.of(context)
+                        .push(createSlideRoute(const BackupScreen())),
+                  ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.school_rounded),
+                    title: const Text('Replay Tutorial'),
+                    subtitle: const Text('Walk through how to play again'),
+                    trailing: const Icon(Icons.chevron_right, size: 20),
+                    onTap: () => Navigator.of(context).push(
+                      createSlideRoute(
+                        OnboardingScreen(
+                          onComplete: () => Navigator.of(context).pop(),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -498,6 +597,60 @@ class SettingsScreen extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+}
+
+/// A settings card with a title, a status line and a switch.
+class _SwitchCard extends StatelessWidget {
+  const _SwitchCard({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SetupCard(
+      icon: icon,
+      iconColor: iconColor,
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(value: value, onChanged: onChanged),
+        ],
+      ),
     );
   }
 }

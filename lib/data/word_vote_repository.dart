@@ -27,6 +27,9 @@ class WordVoteRepository {
     return _box!;
   }
 
+  /// Box backing this repository, for full-app backup/restore.
+  Box<dynamic> get backupBox => _safeBox;
+
   /// Returns the full votes map.
   Map<String, WordVote> getVotes() {
     final raw = _safeBox.get(_keyVotes) as String?;

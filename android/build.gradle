@@ -9,6 +9,23 @@ rootProject.buildDir = "../build"
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
 }
+// Some plugins (e.g. bonsoir_android 5.x) still compile against an old SDK,
+// which fails the AAR metadata check now that their AndroidX dependencies
+// need API 34+. compileSdk only picks the API headers used to compile — it
+// doesn't change runtime behaviour (targetSdk does) — so raising it to the
+// app's level is safe. finalizeDsl runs after the plugin's own build script,
+// so this wins over the value it sets.
+def pluginMinCompileSdk = 36 // Keep in step with flutter.compileSdkVersion.
+subprojects {
+    plugins.withId("com.android.library") {
+        androidComponents.finalizeDsl { android ->
+            if (android.compileSdk != null && android.compileSdk < pluginMinCompileSdk) {
+                android.compileSdk = pluginMinCompileSdk
+            }
+        }
+    }
+}
+
 subprojects {
     project.evaluationDependsOn(":app")
 }

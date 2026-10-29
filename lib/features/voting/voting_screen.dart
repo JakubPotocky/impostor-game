@@ -1,7 +1,9 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:impostor/core/feedback_service.dart';
+import 'package:impostor/features/game_setup/feedback_provider.dart';
 import 'package:impostor/core/motion.dart';
 import 'package:impostor/core/role_assignment_service.dart';
 import 'package:impostor/core/word_difficulty.dart';
@@ -11,7 +13,7 @@ import 'package:impostor/features/end/end_screen.dart';
 ///
 /// Displays all players as tappable squares. Tapping a player "kills" them
 /// with an animation that reveals whether they were an impostor or innocent.
-class VotingScreen extends StatefulWidget {
+class VotingScreen extends ConsumerStatefulWidget {
   const VotingScreen({
     super.key,
     required this.assignments,
@@ -51,10 +53,10 @@ class VotingScreen extends StatefulWidget {
   final String? impostorHintWord;
 
   @override
-  State<VotingScreen> createState() => _VotingScreenState();
+  ConsumerState<VotingScreen> createState() => _VotingScreenState();
 }
 
-class _VotingScreenState extends State<VotingScreen>
+class _VotingScreenState extends ConsumerState<VotingScreen>
     with TickerProviderStateMixin {
   /// Set of indices already eliminated.
   final Set<int> _killed = {};
@@ -65,7 +67,7 @@ class _VotingScreenState extends State<VotingScreen>
   /// Controls the flip animation for the most recently killed player.
   final Map<int, AnimationController> _flipControllers = {};
 
-  static const _feedback = FeedbackService();
+  FeedbackService get _feedback => ref.read(feedbackServiceProvider);
 
   /// Whether the starter banner has been dismissed.
   bool _starterDismissed = false;
@@ -625,7 +627,10 @@ class _VotingScreenState extends State<VotingScreen>
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: _StarterBanner(
-                          playerName: widget.startingPlayerName!,
+                          speakingOrder: speakingOrder(
+                            widget.assignments.map((a) => a.playerName).toList(),
+                            starter: widget.startingPlayerName!,
+                          ),
                           onDismiss: () =>
                               setState(() => _starterDismissed = true),
                         ),
@@ -931,9 +936,10 @@ enum GameResult {
 // Starter banner — shown once at the start of voting
 // ---------------------------------------------------------------------------
 class _StarterBanner extends StatelessWidget {
-  const _StarterBanner({required this.playerName, required this.onDismiss});
+  const _StarterBanner({required this.speakingOrder, required this.onDismiss});
 
-  final String playerName;
+  /// Every player in turn, starting with the starter.
+  final List<String> speakingOrder;
   final VoidCallback onDismiss;
 
   @override
@@ -959,10 +965,15 @@ class _StarterBanner extends StatelessWidget {
                 children: [
                   const TextSpan(text: 'Starter: '),
                   TextSpan(
-                    text: playerName,
+                    text: speakingOrder.first,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const TextSpan(text: ' goes first'),
+                  if (speakingOrder.length > 1)
+                    TextSpan(
+                      text: '\nThen: ${speakingOrder.skip(1).join(' → ')}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
                 ],
               ),
               style: TextStyle(
@@ -983,4 +994,13 @@ class _StarterBanner extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The order players speak in: [players] (their list / seating order),
+/// rotated so [starter] goes first. Returns just [starter] if it's not in
+/// [players].
+List<String> speakingOrder(List<String> players, {required String starter}) {
+  final start = players.indexOf(starter);
+  if (start == -1) return [starter];
+  return [...players.skip(start), ...players.take(start)];
 }

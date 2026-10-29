@@ -84,6 +84,7 @@ LanRoundLaunch launchLanRound(WidgetRef ref, GameRound round) {
       suddenDeathEnabled: setup.suddenDeathEnabled,
       startingPlayerName: round.startingPlayerName,
       wordKey: round.wordKey,
+      holdToReveal: setup.holdToReveal,
       onComplete: checkPlayersScreen,
       completeButtonLabel: 'Check Players',
     ),

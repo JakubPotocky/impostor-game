@@ -26,15 +26,15 @@ to sanity-check before building, not the instructions.
 
 | # | Feature | Size | Why (one line) |
 |---|---------|------|-----------------|
-| 1 | [Local Backup & Restore](#3-local-backup--restore) | Small | Local-only Hive storage means one reinstall silently deletes every stat, streak, and custom theme. |
-| 2 | [Word-Vote-Informed Word Weighting](#4-word-vote-informed-word-weighting) | Small | The app already collects like/dislike data and explicitly does nothing with it yet. |
-| 3 | [Sound & Haptics Toggle](#5-sound--haptics-toggle) | Small | Feedback is always-on with no mute, and reveals happen in living rooms and quiet houses. |
-| 4 | [Quick Polish: Tutorial Replay + App Name Fix](#6-quick-polish-tutorial-replay--app-name-fix) | Tiny | A complete onboarding flow has no way back in; the app's home-screen label is "Impostor~". |
-| 5 | [Round Setting Presets](#7-round-setting-presets) | Small–Medium | Hosts who run the same game night repeatedly reconfigure identical settings every time. |
+| 1 | ✅ DONE — [Local Backup & Restore](#3-local-backup--restore) | Small | Local-only Hive storage means one reinstall silently deletes every stat, streak, and custom theme. |
+| 2 | ✅ DONE — [Word-Vote-Informed Word Weighting](#4-word-vote-informed-word-weighting) | Small | The app already collects like/dislike data and explicitly does nothing with it yet. |
+| 3 | ✅ DONE — [Sound & Haptics Toggle](#5-sound--haptics-toggle) | Small | Feedback is always-on with no mute, and reveals happen in living rooms and quiet houses. |
+| 4 | ✅ DONE — [Quick Polish: Tutorial Replay + App Name Fix](#6-quick-polish-tutorial-replay--app-name-fix) | Tiny | A complete onboarding flow has no way back in; the app's home-screen label is "Impostor~". |
+| 5 | ✅ DONE — [Round Setting Presets](#7-round-setting-presets) | Small–Medium | Hosts who run the same game night repeatedly reconfigure identical settings every time. |
 | 6 | [Theme Pack Sharing via QR](#8-theme-pack-sharing-via-qr) | Small–Medium | Custom themes already export as JSON, but there's no easy channel to move it between phones. |
 | 7 | [Accessibility Pass](#feature-proposalsaccessibility-passmd) | Large | Zero screen-reader support found anywhere; red/green role coloring excludes colorblind players. |
 | 8 | [Player Avatars / Identity Tags](#feature-proposalsplayer-avatarsmd) | Medium–Large | Name-only chips get error-prone once LAN games regularly run 6–10+ players across devices. |
-| 9 | [Achievements & Badges](#feature-proposalsachievements-badgesmd) | Large | Full game history + streaks already exist as raw material; there's no persistent payoff for playing more. |
+| 9 | ✅ DONE — [Achievements & Badges](#feature-proposalsachievements-badgesmd) | Large | Full game history + streaks already exist as raw material; there's no persistent payoff for playing more. |
 | 10 | [Live Voting & Elimination Sync for LAN Guests](#feature-proposalslan-live-voting-syncmd) | Large | Guests currently see nothing after their own reveal — voting still forces everyone to crowd the host's phone. |
 | 11 | [LAN Host Migration](#feature-proposalslan-host-migrationmd) | Large | If the host's phone dies mid-game, every connected guest — native and browser — loses the session with no recovery. |
 | 12 | [Remote Play (Not on the Same Network)](#feature-proposalsremote-play-relaymd) | Very Large | The single most-requested feature for any local-multiplayer party game, but it conflicts with the project's own "no backend" principle — presented with that tradeoff explicit. |

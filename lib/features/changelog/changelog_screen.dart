@@ -5,10 +5,25 @@ class ChangelogScreen extends StatelessWidget {
   const ChangelogScreen({super.key});
 
   /// Current app version.
-  static const currentVersion = '2.6.0';
+  static const currentVersion = '2.7.0';
 
   /// Ordered changelog entries (newest first).
   static const List<_ChangelogEntry> _entries = [
+    _ChangelogEntry(
+      version: '2.7.0',
+      date: 'October 29, 2026',
+      title: 'Game Night Toolkit',
+      changes: [
+        'Presets: save your round settings by name and load them in one tap, on Game Setup or in the LAN lobby.',
+        'Your word votes now count — liked words come up more often, disliked ones less (never removed).',
+        'Hold to Peek: an optional reveal mode where your role shows only while you hold the screen.',
+        'The starter banner now shows the full speaking order, not just who goes first.',
+        'Separate Sound and Vibration switches in Settings, for quiet rooms.',
+        'Backup & Restore: copy all your players, history, themes, ratings and presets, and restore them on any phone.',
+        'Replay the tutorial any time from Settings.',
+        'Fixed the app name showing as "Impostor~" on the home screen.',
+      ],
+    ),
     _ChangelogEntry(
       version: '2.6.0',
       date: 'October 29, 2026',

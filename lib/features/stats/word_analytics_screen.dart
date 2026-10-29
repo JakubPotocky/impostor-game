@@ -52,7 +52,9 @@ class WordAnalyticsScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Rate words at the end of each game',
+                    'Like or dislike words at the end of each game —\n'
+                    'liked words will come up more often',
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       color: colorScheme.onSurface.withAlpha(100),
                       fontSize: 13,
@@ -64,6 +66,27 @@ class WordAnalyticsScreen extends ConsumerWidget {
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Row(
+                    children: [
+                      Icon(Icons.tune_rounded,
+                          size: 16, color: colorScheme.primary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Liked words come up more often and disliked '
+                          'ones less — but no word is ever removed.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colorScheme.onSurface.withAlpha(150),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
                 // --- Top rated ---
                 if (topRated.isNotEmpty) ...[
                   _SectionHeader(

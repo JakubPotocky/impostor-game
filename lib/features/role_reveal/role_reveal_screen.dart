@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:impostor/core/animated_effects.dart';
 import 'package:impostor/core/feedback_service.dart';
+import 'package:impostor/features/game_setup/feedback_provider.dart';
 import 'package:impostor/core/motion.dart';
 import 'package:impostor/core/reveal_palette.dart';
 import 'package:impostor/core/role_assignment_service.dart';
@@ -14,7 +16,7 @@ import 'package:impostor/features/voting/voting_screen.dart';
 ///
 /// Receives pre-computed [RoleAssignment]s and the secret [word],
 /// then steps through them one player at a time.
-class RoleRevealScreen extends StatefulWidget {
+class RoleRevealScreen extends ConsumerStatefulWidget {
   const RoleRevealScreen({
     super.key,
     required this.assignments,
@@ -29,6 +31,7 @@ class RoleRevealScreen extends StatefulWidget {
     this.suddenDeathEnabled = true,
     this.startingPlayerName,
     this.wordKey,
+    this.holdToReveal = false,
     this.votingAssignments,
     this.onComplete,
     this.completeButtonLabel = 'Start Voting',
@@ -82,16 +85,20 @@ class RoleRevealScreen extends StatefulWidget {
   /// Identity of [word] for post-round difficulty rating.
   final WordKey? wordKey;
 
+  /// Show roles only while the player presses and holds, instead of after a
+  /// single tap — nothing stays on screen for a passer-by to glance at.
+  final bool holdToReveal;
+
   @override
-  State<RoleRevealScreen> createState() => _RoleRevealScreenState();
+  ConsumerState<RoleRevealScreen> createState() => _RoleRevealScreenState();
 }
 
-class _RoleRevealScreenState extends State<RoleRevealScreen>
+class _RoleRevealScreenState extends ConsumerState<RoleRevealScreen>
     with TickerProviderStateMixin {
   late RoleRevealState _state;
 
   static const _secureChannel = MethodChannel('com.impostor.impostor/secure');
-  static const _feedback = FeedbackService();
+  FeedbackService get _feedback => ref.read(feedbackServiceProvider);
 
   // Animations
   late AnimationController _fadeCtrl;
@@ -184,7 +191,24 @@ class _RoleRevealScreenState extends State<RoleRevealScreen>
     _revealCtrl.forward(from: 0);
   }
 
+  /// Hold-to-peek: whether the current player has looked at least once.
+  bool _hasPeeked = false;
+
+  void _startPeek() {
+    if (!_hasPeeked) _feedback.roleReveal();
+    setState(() {
+      _hasPeeked = true;
+      _state = _state.copyWith(phase: RevealPhase.revealed);
+    });
+  }
+
+  void _endPeek() {
+    if (_state.phase == RevealPhase.hidden) return;
+    setState(() => _state = _state.copyWith(phase: RevealPhase.hidden));
+  }
+
   void _nextPlayer() {
+    _hasPeeked = false;
     final nextIndex = _state.currentIndex + 1;
     _fadeCtrl.reverse().then((_) {
       if (!mounted) return;
@@ -301,9 +325,11 @@ class _RoleRevealScreenState extends State<RoleRevealScreen>
                   opacity: _fadeIn,
                   child: _state.isComplete
                       ? _buildComplete(context)
-                      : _state.phase == RevealPhase.hidden
-                          ? _buildHidden(context)
-                          : _buildRevealed(context),
+                      : widget.holdToReveal
+                          ? _buildHoldToPeek(context)
+                          : _state.phase == RevealPhase.hidden
+                              ? _buildHidden(context)
+                              : _buildRevealed(context),
                 ),
               ],
             ),
@@ -404,6 +430,53 @@ class _RoleRevealScreenState extends State<RoleRevealScreen>
     );
   }
 
+  /// Hold-to-peek layout: the role is visible only while a finger is down.
+  ///
+  /// The [Listener] stays in the tree for both the prompt and the role so the
+  /// release is always delivered, and the pass button sits outside it so
+  /// pressing it can't trigger a peek.
+  Widget _buildHoldToPeek(BuildContext context) {
+    final assignment = widget.assignments[_state.currentIndex];
+    final colorScheme = Theme.of(context).colorScheme;
+    final peeking = _state.phase == RevealPhase.revealed;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(32, 56, 32, 32),
+      child: Column(
+        children: [
+          Expanded(
+            child: Listener(
+              behavior: HitTestBehavior.opaque,
+              onPointerDown: (_) => _startPeek(),
+              onPointerUp: (_) => _endPeek(),
+              onPointerCancel: (_) => _endPeek(),
+              child: Center(
+                child: SingleChildScrollView(
+                  physics: const NeverScrollableScrollPhysics(),
+                  child: peeking
+                      ? _revealedContent(
+                          context,
+                          assignment,
+                          assignment.isImpostor,
+                          colorScheme,
+                          RevealPalette.accent,
+                          showNextButton: false,
+                        )
+                      : _PeekPrompt(
+                          playerName: assignment.playerName,
+                          hasPeeked: _hasPeeked,
+                        ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          _nextPlayerButton(onPressed: _hasPeeked ? _nextPlayer : null),
+        ],
+      ),
+    );
+  }
+
   Widget _buildRevealed(BuildContext context) {
     final assignment = widget.assignments[_state.currentIndex];
     final isImpostor = assignment.isImpostor;
@@ -442,8 +515,9 @@ class _RoleRevealScreenState extends State<RoleRevealScreen>
     RoleAssignment assignment,
     bool isImpostor,
     ColorScheme colorScheme,
-    Color roleColor,
-  ) {
+    Color roleColor, {
+    bool showNextButton = true,
+  }) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -574,31 +648,36 @@ class _RoleRevealScreenState extends State<RoleRevealScreen>
             ),
           ),
         ],
-        const SizedBox(height: 48),
-        SizedBox(
-          width: double.infinity,
-          height: 56,
-          child: OutlinedButton.icon(
-            onPressed: _nextPlayer,
-            icon: Icon(
-              _state.currentIndex < _state.totalPlayers - 1
-                  ? Icons.arrow_forward_rounded
-                  : Icons.done_all_rounded,
-            ),
-            label: Text(
-              _state.currentIndex < _state.totalPlayers - 1
-                  ? 'Pass to Next Player'
-                  : 'All Roles Revealed',
-              style: const TextStyle(fontSize: 18),
-            ),
-            style: OutlinedButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
+        if (showNextButton) ...[
+          const SizedBox(height: 48),
+          _nextPlayerButton(onPressed: _nextPlayer),
+        ],
+      ],
+    );
+  }
+
+  /// "Pass to Next Player" / "All Roles Revealed". Disabled when
+  /// [onPressed] is null.
+  Widget _nextPlayerButton({required VoidCallback? onPressed}) {
+    final isLast = _state.currentIndex >= _state.totalPlayers - 1;
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: OutlinedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(
+          isLast ? Icons.done_all_rounded : Icons.arrow_forward_rounded,
+        ),
+        label: Text(
+          isLast ? 'All Roles Revealed' : 'Pass to Next Player',
+          style: const TextStyle(fontSize: 18),
+        ),
+        style: OutlinedButton.styleFrom(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
         ),
-      ],
+      ),
     );
   }
 
@@ -657,6 +736,54 @@ class _RoleRevealScreenState extends State<RoleRevealScreen>
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Prompt shown in hold-to-peek mode while no finger is down.
+class _PeekPrompt extends StatelessWidget {
+  const _PeekPrompt({required this.playerName, required this.hasPeeked});
+
+  final String playerName;
+  final bool hasPeeked;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          playerName,
+          style: Theme.of(context)
+              .textTheme
+              .headlineLarge
+              ?.copyWith(fontWeight: FontWeight.w700),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 40),
+        Container(
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: colorScheme.primaryContainer.withAlpha(90),
+          ),
+          child: Icon(Icons.fingerprint_rounded,
+              size: 72, color: colorScheme.primary),
+        ),
+        const SizedBox(height: 24),
+        Text(
+          hasPeeked
+              ? 'Hold again to look again,\nor pass the phone on'
+              : 'Press and hold here\nto peek at your role',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: colorScheme.onSurface.withAlpha(160),
+            fontSize: 16,
+            height: 1.5,
+          ),
+        ),
+      ],
     );
   }
 }

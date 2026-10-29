@@ -1,29 +1,27 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:impostor/core/achievements.dart';
 import 'package:impostor/core/animated_effects.dart';
+import 'package:impostor/core/difficulty_style.dart';
 import 'package:impostor/core/feedback_service.dart';
 import 'package:impostor/core/motion.dart';
 import 'package:impostor/core/role_assignment_service.dart';
 import 'package:impostor/core/streaks.dart';
-import 'package:impostor/core/word_hint_service.dart';
 import 'package:impostor/core/widgets.dart';
+import 'package:impostor/core/word_difficulty.dart';
 import 'package:impostor/data/achievement_repository.dart';
 import 'package:impostor/data/game_history_repository.dart';
 import 'package:impostor/data/word_vote_repository.dart';
 import 'package:impostor/features/game_setup/game_setup_notifier.dart';
-import 'package:impostor/features/game_setup/game_setup_state.dart';
+import 'package:impostor/features/game_setup/round_factory.dart';
+import 'package:impostor/features/lan_lobby/lan_round_launcher.dart';
 import 'package:impostor/features/lan_lobby/lan_session_notifier.dart';
 import 'package:impostor/features/lan_lobby/lan_session_state.dart';
 import 'package:impostor/features/lan_lobby/screens/host_lobby_screen.dart';
-import 'package:impostor/features/lan_lobby/screens/lan_ready_check_screen.dart';
 import 'package:impostor/features/players/players_notifier.dart';
 import 'package:impostor/features/players/players_screen.dart';
-import 'package:impostor/features/pre_game/pre_game_screen.dart';
 import 'package:impostor/features/role_reveal/role_reveal_screen.dart';
-import 'package:impostor/features/themes/themes_notifier.dart';
+import 'package:impostor/features/themes/word_difficulty_notifier.dart';
 import 'package:impostor/features/voting/voting_screen.dart' show GameResult;
 
 /// End screen showing the game result, who the impostors were, and the word.
@@ -35,6 +33,10 @@ class EndScreen extends ConsumerStatefulWidget {
     required this.result,
     required this.killedIndices,
     this.reducedMotion = false,
+    this.endReason = RoundEndReason.normalVoteResolution,
+    this.startingPlayerName,
+    this.wordKey,
+    this.impostorHintWord,
   });
 
   final List<RoleAssignment> assignments;
@@ -42,6 +44,14 @@ class EndScreen extends ConsumerStatefulWidget {
   final GameResult result;
   final List<int> killedIndices;
   final bool reducedMotion;
+  final RoundEndReason endReason;
+  final String? startingPlayerName;
+
+  /// Identity of [word] for difficulty rating; rating is hidden without it.
+  final WordKey? wordKey;
+
+  /// The clue impostors were given, revealed alongside the word.
+  final String? impostorHintWord;
 
   @override
   ConsumerState<EndScreen> createState() => _EndScreenState();
@@ -102,6 +112,8 @@ class _EndScreenState extends ConsumerState<EndScreen>
           .map((i) => widget.assignments[i].playerName)
           .toList(),
       isBlankRound: isBlankRound,
+      endReason: widget.endReason,
+      startingPlayerName: widget.startingPlayerName,
     ));
 
     final updated = [
@@ -120,6 +132,8 @@ class _EndScreenState extends ConsumerState<EndScreen>
             .map((i) => widget.assignments[i].playerName)
             .toList(),
         isBlankRound: isBlankRound,
+        endReason: widget.endReason,
+        startingPlayerName: widget.startingPlayerName,
       ),
       ...repo.getGames(),
     ];
@@ -155,6 +169,15 @@ class _EndScreenState extends ConsumerState<EndScreen>
     });
   }
 
+  /// The impostors' hint, shown only if impostors actually saw one.
+  String? get _revealedHint {
+    final hint = widget.impostorHintWord?.trim();
+    if (hint == null || hint.isEmpty) return null;
+    final hintsEnabled =
+        ref.watch(gameSetupProvider.select((s) => s.hintsEnabled));
+    return hintsEnabled ? hint : null;
+  }
+
   List<String> _winnerNames() {
     switch (widget.result) {
       case GameResult.innocentsWin:
@@ -172,101 +195,66 @@ class _EndScreenState extends ConsumerState<EndScreen>
     }
   }
 
+  String _impostorWinSubtitle() {
+    return switch (widget.endReason) {
+      RoundEndReason.impostorGuessedWord =>
+        'Impostors won by guessing the secret word!',
+      RoundEndReason.suddenDeath =>
+        'The impostors outlasted innocents in Sudden Death!',
+      _ => 'The impostors managed to survive!',
+    };
+  }
+
   void _quickRematch() {
     final lanState = ref.read(lanSessionProvider);
     final isLanHosting = lanState.isHost && lanState.phase != LanPhase.idle;
     // Read from the live LAN roster when hosting, not the pre-lobby players
     // provider — players can be added/removed from the Host Lobby screen
     // after hosting starts.
-    final allPlayers =
+    final players =
         isLanHosting ? lanState.players : ref.read(playersProvider).players;
-    final setup = ref.read(gameSetupProvider);
-    final themesState = ref.read(themesProvider).valueOrNull;
-    if (themesState == null) return;
 
-    final enabledThemes = setup.selectedThemes;
-    if (enabledThemes.isEmpty) return;
-
-    final random = Random();
-
-    // Check for "j999" trigger.
-    final hasJ999 = allPlayers.any((p) => p == 'j999');
-    final players = hasJ999
-        ? allPlayers.where((p) => p != 'j999').toList()
-        : List<String>.from(allPlayers);
-
-    if (players.length < 3) return;
-
-    final isBlankRound = hasJ999 || random.nextInt(12) == 0;
-
-    final theme = enabledThemes[random.nextInt(enabledThemes.length)];
-    final language = setup.language;
-    final englishWords = themesState.getEnglishWords(theme);
-    if (englishWords.isEmpty) return;
-
-    final wordPicker = ref.read(wordPickerServiceProvider);
-    final wordIndex = wordPicker.pickWordIndex(
-      theme: theme,
-      wordCount: englishWords.length,
-      random: random,
-    );
-
-    final translatedWords = themesState.getWords(theme, language);
-    final word = wordIndex < translatedWords.length
-        ? translatedWords[wordIndex]
-        : englishWords[wordIndex];
-    final impostorHintWord = pickImpostorHintWord(
-      themeWords: translatedWords.isNotEmpty ? translatedWords : englishWords,
-      secretWord: word,
-      random: random,
-    );
-
-    List<RoleAssignment> assignments;
-    if (isBlankRound) {
-      assignments = players
-          .map((name) => RoleAssignment(
-                playerName: name,
-                isImpostor: true,
-              ))
-          .toList();
-    } else {
-      const roleService = RoleAssignmentService();
-      assignments = roleService.assignRoles(
-        players: players,
-        impostorCount: setup.impostorCount,
-        word: word,
-        random: random,
-      );
+    final result = createRound(ref, players: players);
+    final GameRound round;
+    switch (result) {
+      case RoundUnavailable(:final reason):
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(reason)));
+        return;
+      case RoundReady():
+        round = result.round;
     }
 
+    final Widget nextScreen;
     if (isLanHosting) {
-      _lanQuickRematch(
-        allAssignments: assignments,
-        word: word,
-        theme: theme,
-        impostorHintWord: impostorHintWord,
-        isBlankRound: isBlankRound,
-        setup: setup,
+      // Redistributes the new round through the still-live LAN session
+      // instead of abandoning it. Connected devices keep the player identity
+      // they already picked, so guests just see a fresh reveal.
+      nextScreen = launchLanRound(ref, round).hostScreen;
+    } else {
+      final setup = ref.read(gameSetupProvider);
+      nextScreen = RoleRevealScreen(
+        assignments: round.assignments,
+        word: round.word,
+        themeName: round.themeName,
+        hintsEnabled: setup.hintsEnabled,
+        themeVisibilityMode: setup.themeVisibilityMode,
+        impostorHintWord: round.impostorHint,
+        timerSeconds: setup.timerEnabled ? setup.timerMinutes * 60 : 0,
+        isBlankRound: round.isBlankRound,
+        reducedMotion: setup.reducedMotion,
+        suddenDeathEnabled: setup.suddenDeathEnabled,
+        startingPlayerName: round.startingPlayerName,
+        wordKey: round.wordKey,
       );
-      return;
     }
 
-    // Replace the entire game stack with new role reveal.
+    // Replace the entire game stack with the new round. When LAN-hosting,
+    // the session lives in lanSessionProvider, not on the nav stack, so it
+    // keeps running; it only stops when endSession() is called (see "Back to
+    // Home" below) or a device disconnects on its own.
     Navigator.of(context).pushAndRemoveUntil(
-      createSlideRoute(
-        RoleRevealScreen(
-          assignments: assignments,
-          word: word,
-          themeName: theme,
-          hintsEnabled: setup.hintsEnabled,
-          themeVisibilityMode: setup.themeVisibilityMode,
-          impostorHintWord: impostorHintWord,
-          timerSeconds: setup.timerEnabled ? setup.timerMinutes * 60 : 0,
-          isBlankRound: isBlankRound,
-          reducedMotion: setup.reducedMotion,
-          suddenDeathEnabled: setup.suddenDeathEnabled,
-        ),
-      ),
+      createSlideRoute(nextScreen),
       (route) => route.isFirst,
     );
   }
@@ -283,84 +271,6 @@ class _EndScreenState extends ConsumerState<EndScreen>
     ref.read(lanSessionProvider.notifier).returnToLobby();
     Navigator.of(context).pushAndRemoveUntil(
       createSlideRoute(HostLobbyScreen(mode: mode)),
-      (route) => route.isFirst,
-    );
-  }
-
-  /// Rematch while LAN-hosting: redistributes the new round through the
-  /// still-live LAN session instead of abandoning it. Connected devices
-  /// keep the player identity they already picked, so guests just see a
-  /// fresh reveal for the same player round after round — no re-joining,
-  /// no re-picking — until they disconnect or the host ends the session.
-  void _lanQuickRematch({
-    required List<RoleAssignment> allAssignments,
-    required String word,
-    required String theme,
-    required String? impostorHintWord,
-    required bool isBlankRound,
-    required GameSetupState setup,
-  }) {
-    final lanNotifier = ref.read(lanSessionProvider.notifier);
-    final hostBucket = lanNotifier.distributeAssignments(
-      allAssignments: allAssignments
-          .map((a) => {
-                'playerName': a.playerName,
-                'isImpostor': a.isImpostor,
-                'word': a.word,
-              })
-          .toList(),
-      word: word,
-      themeName: theme,
-      hintsEnabled: setup.hintsEnabled,
-      themeVisibilityMode: setup.themeVisibilityMode.index,
-      impostorHintWord: impostorHintWord,
-      reducedMotion: setup.reducedMotion,
-    );
-    lanNotifier.triggerStartGame();
-
-    final hostAssignments = hostBucket
-        .map((a) => RoleAssignment(
-              playerName: a['playerName'] as String,
-              isImpostor: a['isImpostor'] as bool,
-              word: a['word'] as String?,
-            ))
-        .toList();
-
-    final timerSeconds = setup.timerEnabled ? setup.timerMinutes * 60 : 0;
-    Widget checkPlayersScreen(BuildContext ctx) => LanReadyCheckScreen(
-          assignments: allAssignments,
-          word: word,
-          timerSeconds: timerSeconds,
-          isBlankRound: isBlankRound,
-          reducedMotion: setup.reducedMotion,
-          suddenDeathEnabled: setup.suddenDeathEnabled,
-        );
-
-    final nextScreen = hostAssignments.isEmpty
-        ? checkPlayersScreen(context)
-        : RoleRevealScreen(
-            assignments: hostAssignments,
-            votingAssignments: allAssignments,
-            word: word,
-            themeName: theme,
-            hintsEnabled: setup.hintsEnabled,
-            themeVisibilityMode: setup.themeVisibilityMode,
-            impostorHintWord: impostorHintWord,
-            timerSeconds: timerSeconds,
-            isBlankRound: isBlankRound,
-            reducedMotion: setup.reducedMotion,
-            suddenDeathEnabled: setup.suddenDeathEnabled,
-            onComplete: checkPlayersScreen,
-            completeButtonLabel: 'Check Players',
-          );
-
-    // The LAN session lives in lanSessionProvider, not on the nav stack, so
-    // it's safe to unwind HostLobbyScreen the same way the solo path does —
-    // the session keeps running in the background and the next rematch can
-    // still drive it directly. It only stops when endSession() is called
-    // (see "Back to Home" below) or a device disconnects on its own.
-    Navigator.of(context).pushAndRemoveUntil(
-      createSlideRoute(nextScreen),
       (route) => route.isFirst,
     );
   }
@@ -526,7 +436,7 @@ class _EndScreenState extends ConsumerState<EndScreen>
                           isBlankRound
                               ? 'Nobody had the word — everyone was the impostor!'
                               : isImpostorWin
-                                  ? 'The impostors managed to survive!'
+                                  ? _impostorWinSubtitle()
                                   : 'All impostors have been found!',
                           style: TextStyle(
                             color: colorScheme.onSurface.withAlpha(170),
@@ -570,6 +480,24 @@ class _EndScreenState extends ConsumerState<EndScreen>
                                     ),
                                 textAlign: TextAlign.center,
                               ),
+                              if (_revealedHint case final hint?) ...[
+                                const SizedBox(height: 6),
+                                Text.rich(
+                                  TextSpan(children: [
+                                    const TextSpan(text: "Impostors' hint: "),
+                                    TextSpan(
+                                      text: hint,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w700),
+                                    ),
+                                  ]),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: colorScheme.onSurface.withAlpha(160),
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -593,6 +521,13 @@ class _EndScreenState extends ConsumerState<EndScreen>
                                 .dislikeWord(widget.word);
                           },
                         ),
+                        // Nobody played with the word in a blank round, so
+                        // there is no basis for rating it.
+                        if (widget.wordKey case final wordKey?
+                            when !isBlankRound) ...[
+                          const SizedBox(height: 12),
+                          _DifficultyRatingRow(wordKey: wordKey),
+                        ],
                         const SizedBox(height: 24),
 
                         // Impostors / All Players section
@@ -960,6 +895,67 @@ class _AchievementUnlockBanner extends StatelessWidget {
             ),
           );
         }).toList(),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Difficulty rating — the host rates how hard the word was to play
+// ---------------------------------------------------------------------------
+class _DifficultyRatingRow extends ConsumerWidget {
+  const _DifficultyRatingRow({required this.wordKey});
+
+  final WordKey wordKey;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final current = ref.watch(wordDifficultyProvider).of(wordKey);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        color: colorScheme.surfaceContainerHigh,
+      ),
+      child: Column(
+        children: [
+          Text(
+            current == WordDifficulty.unset
+                ? 'How hard was this word?'
+                : 'Word difficulty: ${current.label}',
+            style: TextStyle(
+              color: colorScheme.onSurface.withAlpha(180),
+              fontWeight: FontWeight.w500,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 10),
+          SegmentedButton<WordDifficulty>(
+            segments: [
+              for (final d in WordDifficulty.ratable)
+                ButtonSegment(
+                  value: d,
+                  label: Text(d.label),
+                  icon: Icon(d.icon, color: d.color),
+                ),
+            ],
+            selected: {
+              if (current != WordDifficulty.unset) current,
+            },
+            emptySelectionAllowed: true,
+            showSelectedIcon: false,
+            onSelectionChanged: (selection) {
+              // Tapping the selected rating again clears it back to unset.
+              ref.read(wordDifficultyProvider.notifier).setDifficulty(
+                    wordKey,
+                    selection.isEmpty ? WordDifficulty.unset : selection.first,
+                  );
+            },
+          ),
+        ],
       ),
     );
   }

@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:impostor/core/animated_effects.dart';
 import 'package:impostor/core/feedback_service.dart';
 import 'package:impostor/core/motion.dart';
+import 'package:impostor/core/reveal_palette.dart';
 import 'package:impostor/core/role_assignment_service.dart';
+import 'package:impostor/core/word_difficulty.dart';
 import 'package:impostor/features/game_setup/game_setup_state.dart';
 import 'package:impostor/features/role_reveal/role_reveal_state.dart';
 import 'package:impostor/features/voting/voting_screen.dart';
@@ -25,6 +27,8 @@ class RoleRevealScreen extends StatefulWidget {
     this.impostorHintWord,
     this.reducedMotion = false,
     this.suddenDeathEnabled = true,
+    this.startingPlayerName,
+    this.wordKey,
     this.votingAssignments,
     this.onComplete,
     this.completeButtonLabel = 'Start Voting',
@@ -71,6 +75,12 @@ class RoleRevealScreen extends StatefulWidget {
 
   /// Whether sudden death mode is enabled.
   final bool suddenDeathEnabled;
+
+  /// Who opens the discussion, decided when the round was built.
+  final String? startingPlayerName;
+
+  /// Identity of [word] for post-round difficulty rating.
+  final WordKey? wordKey;
 
   @override
   State<RoleRevealScreen> createState() => _RoleRevealScreenState();
@@ -166,7 +176,7 @@ class _RoleRevealScreenState extends State<RoleRevealScreen>
 
   void _revealRole() {
     final assignment = widget.assignments[_state.currentIndex];
-    _feedback.roleReveal(isImpostor: assignment.isImpostor);
+    _feedback.roleReveal();
     setState(() {
       _state = _state.copyWith(phase: RevealPhase.revealed);
       if (assignment.isImpostor) _shakeTrigger++;
@@ -221,18 +231,22 @@ class _RoleRevealScreenState extends State<RoleRevealScreen>
 
   void _goToVoting() {
     final onComplete = widget.onComplete;
+    final votingAssignments = widget.votingAssignments ?? widget.assignments;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
             onComplete != null
                 ? onComplete(context)
                 : VotingScreen(
-                    assignments: widget.votingAssignments ?? widget.assignments,
+                    assignments: votingAssignments,
                     word: widget.word,
                     timerSeconds: widget.timerSeconds,
                     isBlankRound: widget.isBlankRound,
                     reducedMotion: widget.reducedMotion,
                     suddenDeathEnabled: widget.suddenDeathEnabled,
+                    startingPlayerName: widget.startingPlayerName,
+                    wordKey: widget.wordKey,
+                    impostorHintWord: widget.impostorHintWord,
                   ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           final curved =
@@ -395,7 +409,7 @@ class _RoleRevealScreenState extends State<RoleRevealScreen>
     final isImpostor = assignment.isImpostor;
     final colorScheme = Theme.of(context).colorScheme;
 
-    final roleColor = isImpostor ? Colors.red.shade400 : Colors.green.shade400;
+    final roleColor = RevealPalette.accent;
 
     final content = widget.reducedMotion
         ? Center(
@@ -478,7 +492,7 @@ class _RoleRevealScreenState extends State<RoleRevealScreen>
               )
             : ShimmerText(
                 text: 'You are the Impostor!',
-                shimmerColor: Colors.red.shade200,
+                shimmerColor: RevealPalette.shimmer,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       color: roleColor,
                       fontWeight: FontWeight.bold,
@@ -492,7 +506,7 @@ class _RoleRevealScreenState extends State<RoleRevealScreen>
               borderRadius: BorderRadius.circular(16),
               color: colorScheme.surfaceContainerHigh,
               border: Border.all(
-                color: Colors.green.withAlpha(60),
+                color: RevealPalette.accent.withAlpha(60),
                 width: 2,
               ),
             ),
@@ -501,15 +515,15 @@ class _RoleRevealScreenState extends State<RoleRevealScreen>
                     assignment.word!,
                     style: Theme.of(context).textTheme.displaySmall?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: Colors.green.shade300,
+                          color: RevealPalette.accentSoft,
                         ),
                   )
                 : ShimmerText(
                     text: assignment.word!,
-                    shimmerColor: Colors.green.shade200,
+                    shimmerColor: RevealPalette.shimmer,
                     style: Theme.of(context).textTheme.displaySmall?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: Colors.green.shade300,
+                          color: RevealPalette.accentSoft,
                         ),
                   ),
           ),
@@ -549,7 +563,7 @@ class _RoleRevealScreenState extends State<RoleRevealScreen>
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Hint word: ${widget.impostorHintWord!.trim()}',
+                    'Hint: ${widget.impostorHintWord!.trim()}',
                     style: TextStyle(
                       fontSize: 12,
                       color: colorScheme.onSurface.withAlpha(190),

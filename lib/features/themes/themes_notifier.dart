@@ -1,7 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:impostor/core/word_difficulty.dart';
 import 'package:impostor/data/custom_theme_repository.dart';
 import 'package:impostor/data/theme_repository.dart';
+import 'package:impostor/data/theme_word.dart';
 import 'package:impostor/features/themes/themes_state.dart';
+import 'package:impostor/features/themes/word_difficulty_notifier.dart';
 
 /// Notifier that loads and caches theme data.
 class ThemesNotifier extends AsyncNotifier<ThemesState> {
@@ -12,11 +15,14 @@ class ThemesNotifier extends AsyncNotifier<ThemesState> {
   Future<ThemesState> build() async {
     _repo = ref.read(themeRepositoryProvider);
     _customRepo = ref.read(customThemeRepositoryProvider);
+    return _load();
+  }
+
+  Future<ThemesState> _load() async {
     final bundled = await _repo.loadThemes();
     final custom = _customRepo.getCustomThemes();
-    final merged = _merge(bundled, custom);
     return ThemesState(
-      themes: merged,
+      themes: _merge(bundled, custom),
       customThemeNames: custom.keys.toSet(),
       isLoading: false,
     );
@@ -24,25 +30,8 @@ class ThemesNotifier extends AsyncNotifier<ThemesState> {
 
   /// Merges bundled and custom themes. Custom themes override bundled ones with
   /// the same name, and new custom themes are appended.
-  Map<String, Map<String, List<String>>> _merge(
-    Map<String, Map<String, List<String>>> bundled,
-    Map<String, Map<String, List<String>>> custom,
-  ) {
-    final result = Map<String, Map<String, List<String>>>.from(
-      bundled.map((k, v) => MapEntry(
-          k,
-          Map<String, List<String>>.from(
-            v.map((lang, words) => MapEntry(lang, List<String>.from(words))),
-          ))),
-    );
-    // Overlay custom themes on top.
-    for (final entry in custom.entries) {
-      result[entry.key] = Map<String, List<String>>.from(
-        entry.value
-            .map((lang, words) => MapEntry(lang, List<String>.from(words))),
-      );
-    }
-    return result;
+  ThemeCatalog _merge(ThemeCatalog bundled, ThemeCatalog custom) {
+    return copyThemeCatalog(bundled)..addAll(copyThemeCatalog(custom));
   }
 
   // ---------------------------------------------------------------------------
@@ -50,28 +39,18 @@ class ThemesNotifier extends AsyncNotifier<ThemesState> {
   // ---------------------------------------------------------------------------
 
   /// Adds a brand new custom category with English words only.
-  Future<void> addCategory(String name, List<String> englishWords) async {
+  Future<void> addCategory(String name, List<ThemeWord> englishWords) async {
     final custom = _customRepo.getCustomThemes();
-    custom[name] = {'en': englishWords};
+    custom[name] = {'en': List.of(englishWords)};
     await _customRepo.saveCustomThemes(custom);
     await _reload();
   }
 
-  /// Adds a word to [category] under [language].
-  Future<void> addWord(String category, String language, String word) async {
+  /// Adds a word (with optional hint) to [category] under [language].
+  Future<void> addWord(String category, String language, ThemeWord word) async {
     final custom = _customRepo.getCustomThemes();
-    // If the category isn't in custom yet, copy it from current state.
-    if (!custom.containsKey(category)) {
-      final current = state.valueOrNull?.themes[category];
-      if (current != null) {
-        custom[category] = current
-            .map((lang, words) => MapEntry(lang, List<String>.from(words)));
-      } else {
-        custom[category] = {};
-      }
-    }
-    custom[category]!.putIfAbsent(language, () => []);
-    custom[category]![language]!.add(word);
+    final langMap = _ensureCustomCopy(custom, category) ?? (custom[category] = {});
+    langMap.putIfAbsent(language, () => []).add(word);
     await _customRepo.saveCustomThemes(custom);
     await _reload();
   }
@@ -79,39 +58,40 @@ class ThemesNotifier extends AsyncNotifier<ThemesState> {
   /// Removes a word at [index] from [category] under [language].
   Future<void> removeWord(String category, String language, int index) async {
     final custom = _customRepo.getCustomThemes();
-    if (!custom.containsKey(category)) {
-      final current = state.valueOrNull?.themes[category];
-      if (current != null) {
-        custom[category] = current
-            .map((lang, words) => MapEntry(lang, List<String>.from(words)));
-      } else {
-        return;
-      }
-    }
-    final words = custom[category]?[language];
+    final words = _ensureCustomCopy(custom, category)?[language];
     if (words == null || index < 0 || index >= words.length) return;
-    words.removeAt(index);
+    final removed = words.removeAt(index);
     await _customRepo.saveCustomThemes(custom);
+    if (language == 'en') {
+      await ref
+          .read(wordDifficultyProvider.notifier)
+          .remove(WordKey(theme: category, englishWord: removed.text));
+    }
     await _reload();
   }
 
-  /// Edits a word at [index] in [category] under [language].
+  /// Replaces the word at [index] in [category] under [language].
+  ///
+  /// Renaming an English word carries its difficulty rating over, since the
+  /// English text is the word's identity for ratings.
   Future<void> editWord(
-      String category, String language, int index, String newWord) async {
+    String category,
+    String language,
+    int index,
+    ThemeWord newWord,
+  ) async {
     final custom = _customRepo.getCustomThemes();
-    if (!custom.containsKey(category)) {
-      final current = state.valueOrNull?.themes[category];
-      if (current != null) {
-        custom[category] = current
-            .map((lang, words) => MapEntry(lang, List<String>.from(words)));
-      } else {
-        return;
-      }
-    }
-    final words = custom[category]?[language];
+    final words = _ensureCustomCopy(custom, category)?[language];
     if (words == null || index < 0 || index >= words.length) return;
+    final previous = words[index];
     words[index] = newWord;
     await _customRepo.saveCustomThemes(custom);
+    if (language == 'en' && previous.text != newWord.text) {
+      await ref.read(wordDifficultyProvider.notifier).rename(
+            WordKey(theme: category, englishWord: previous.text),
+            WordKey(theme: category, englishWord: newWord.text),
+          );
+    }
     await _reload();
   }
 
@@ -121,17 +101,30 @@ class ThemesNotifier extends AsyncNotifier<ThemesState> {
     custom.remove(name);
     await _customRepo.saveCustomThemes(custom);
     await _reload();
+    // A deleted override of a bundled theme falls back to the bundled words,
+    // whose ratings must survive; only drop ratings if the theme is gone.
+    if (state.valueOrNull?.themes.containsKey(name) == false) {
+      await ref.read(wordDifficultyProvider.notifier).removeTheme(name);
+    }
+  }
+
+  /// Returns the custom copy of [category], first copying the bundled version
+  /// into [custom] if the user hasn't edited it before. Null if the category
+  /// exists nowhere.
+  Map<String, List<ThemeWord>>? _ensureCustomCopy(
+    ThemeCatalog custom,
+    String category,
+  ) {
+    if (!custom.containsKey(category)) {
+      final current = state.valueOrNull?.themes[category];
+      if (current == null) return null;
+      custom[category] = copyThemeCatalog({category: current})[category]!;
+    }
+    return custom[category];
   }
 
   Future<void> _reload() async {
-    final bundled = await _repo.loadThemes();
-    final custom = _customRepo.getCustomThemes();
-    final merged = _merge(bundled, custom);
-    state = AsyncData(ThemesState(
-      themes: merged,
-      customThemeNames: custom.keys.toSet(),
-      isLoading: false,
-    ));
+    state = AsyncData(await _load());
   }
 }
 

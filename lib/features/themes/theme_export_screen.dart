@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:impostor/data/theme_word.dart';
 import 'package:impostor/features/themes/themes_notifier.dart';
 
 /// Screen for exporting and importing custom theme packs as JSON.
@@ -34,7 +35,8 @@ class _ThemeExportScreenState extends ConsumerState<ThemeExportScreen> {
       });
       return;
     }
-    final json = const JsonEncoder.withIndent('  ').convert(custom);
+    final json =
+        const JsonEncoder.withIndent('  ').convert(encodeThemeCatalog(custom));
     Clipboard.setData(ClipboardData(text: json));
     setState(() {
       _statusMessage = 'Copied ${custom.length} theme(s) to clipboard!';
@@ -53,16 +55,9 @@ class _ThemeExportScreenState extends ConsumerState<ThemeExportScreen> {
     }
 
     try {
-      final decoded = json.decode(text) as Map<String, dynamic>;
-      final themes = <String, Map<String, List<String>>>{};
-
-      for (final entry in decoded.entries) {
-        final langMap = entry.value as Map<String, dynamic>;
-        themes[entry.key] = langMap.map(
-          (lang, words) =>
-              MapEntry(lang, (words as List<dynamic>).cast<String>()),
-        );
-      }
+      // Accepts both hint-less (plain string) and hinted word entries.
+      final themes =
+          decodeThemeCatalog(json.decode(text) as Map<String, dynamic>);
 
       if (themes.isEmpty) {
         setState(() {

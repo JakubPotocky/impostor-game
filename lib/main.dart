@@ -7,6 +7,7 @@ import 'package:impostor/data/custom_theme_repository.dart';
 import 'package:impostor/data/game_history_repository.dart';
 import 'package:impostor/data/player_repository.dart';
 import 'package:impostor/data/settings_repository.dart';
+import 'package:impostor/data/word_difficulty_repository.dart';
 import 'package:impostor/data/word_vote_repository.dart';
 import 'package:impostor/features/game_setup/game_setup_notifier.dart';
 import 'package:impostor/features/home/home_screen.dart';
@@ -39,6 +40,9 @@ Future<void> main() async {
   final achievementRepo = AchievementRepository();
   await achievementRepo.init();
 
+  final wordDifficultyRepo = WordDifficultyRepository();
+  await wordDifficultyRepo.init();
+
   final hasSeenTutorial = settingsRepo.getHasSeenTutorial();
 
   runApp(
@@ -50,6 +54,7 @@ Future<void> main() async {
         wordVoteRepositoryProvider.overrideWithValue(wordVoteRepo),
         gameHistoryRepositoryProvider.overrideWithValue(gameHistoryRepo),
         achievementRepositoryProvider.overrideWithValue(achievementRepo),
+        wordDifficultyRepositoryProvider.overrideWithValue(wordDifficultyRepo),
       ],
       child: ImpostorApp(showOnboarding: !hasSeenTutorial),
     ),

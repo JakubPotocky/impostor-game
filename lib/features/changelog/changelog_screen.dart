@@ -5,10 +5,24 @@ class ChangelogScreen extends StatelessWidget {
   const ChangelogScreen({super.key});
 
   /// Current app version.
-  static const currentVersion = '2.5.0';
+  static const currentVersion = '2.6.0';
 
   /// Ordered changelog entries (newest first).
   static const List<_ChangelogEntry> _entries = [
+    _ChangelogEntry(
+      version: '2.6.0',
+      date: 'October 29, 2026',
+      title: 'Hints & Difficulty',
+      changes: [
+        'Every word now has its own hand-written impostor hint, in every language.',
+        'Add or edit hints for any word in Manage Themes; new categories accept "Word: hint" lines.',
+        'Rate how hard the word was at the end of each game, then filter by Easy, Medium, Hard or Unrated in Settings.',
+        'Manage Themes can search words, filter by difficulty, and set a difficulty directly.',
+        'The end screen now shows the hint impostors were given.',
+        'Role reveals look and feel identical for every role — no more red glow or stronger buzz giving impostors away.',
+        'Fixed: a starting player is now announced when everyone is the impostor, and in LAN games.',
+      ],
+    ),
     _ChangelogEntry(
       version: '2.5.0',
       date: 'August 22, 2026',

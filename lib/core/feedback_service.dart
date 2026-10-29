@@ -11,17 +11,12 @@ class FeedbackService {
     await HapticFeedback.lightImpact();
   }
 
-  /// Medium haptic for role reveal.
-  Future<void> roleReveal({required bool isImpostor}) async {
-    if (isImpostor) {
-      // Heavy dramatic buzz for impostor.
-      await HapticFeedback.heavyImpact();
-      await Future.delayed(const Duration(milliseconds: 100));
-      await HapticFeedback.heavyImpact();
-    } else {
-      // Light relief tap for innocent.
-      await HapticFeedback.mediumImpact();
-    }
+  /// Haptic for role reveal.
+  ///
+  /// Identical for every role on purpose: a stronger buzz for impostors can
+  /// be felt or heard by the people sitting next to the phone.
+  Future<void> roleReveal() async {
+    await HapticFeedback.mediumImpact();
   }
 
   /// Heavy haptic on vote/kill.

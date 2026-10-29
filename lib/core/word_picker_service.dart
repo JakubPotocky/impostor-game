@@ -18,20 +18,36 @@ class WordPickerService {
     required Random random,
   }) {
     assert(wordCount > 0, 'Word list must not be empty');
+    return pickFromCandidates(
+      theme: theme,
+      candidates: List.generate(wordCount, (i) => i),
+      random: random,
+    );
+  }
 
-    final used = _usedIndices[theme] ?? <int>{};
-    var available = [
-      for (var i = 0; i < wordCount; i++)
-        if (!used.contains(i)) i,
-    ];
+  /// Picks one of [candidates] (indices into [theme]'s word list), avoiding
+  /// indices already used this session.
+  ///
+  /// When every candidate has been used, only those candidates are recycled:
+  /// history for words outside the current pool (e.g. filtered out by
+  /// difficulty) is kept, so they still won't repeat once back in the pool.
+  int pickFromCandidates({
+    required String theme,
+    required List<int> candidates,
+    required Random random,
+  }) {
+    assert(candidates.isNotEmpty, 'Candidate list must not be empty');
+
+    final used = _usedIndices.putIfAbsent(theme, () => {});
+    var available = candidates.where((i) => !used.contains(i)).toList();
 
     if (available.isEmpty) {
-      _usedIndices[theme] = {};
-      available = List.generate(wordCount, (i) => i);
+      used.removeAll(candidates);
+      available = List.of(candidates);
     }
 
     final picked = available[random.nextInt(available.length)];
-    _usedIndices.putIfAbsent(theme, () => {}).add(picked);
+    used.add(picked);
     return picked;
   }
 

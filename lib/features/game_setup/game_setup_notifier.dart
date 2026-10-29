@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:impostor/core/word_difficulty.dart';
 import 'package:impostor/data/settings_repository.dart';
 import 'package:impostor/features/game_setup/game_setup_state.dart';
 
@@ -21,6 +22,7 @@ class GameSetupNotifier extends Notifier<GameSetupState> {
       reducedMotion: _repo.getReducedMotion(),
       suddenDeathEnabled: _repo.getSuddenDeathEnabled(),
       darkMode: _repo.getDarkMode(),
+      allowedDifficulties: _repo.getAllowedDifficulties(),
     );
   }
 
@@ -78,6 +80,23 @@ class GameSetupNotifier extends Notifier<GameSetupState> {
   void setDarkMode(bool dark) {
     state = state.copyWith(darkMode: dark);
     _repo.saveDarkMode(dark);
+  }
+
+  /// Toggles whether words of [difficulty] can be picked.
+  ///
+  /// Refuses to deselect the last remaining difficulty — an empty filter
+  /// would leave no playable words. Returns whether the toggle was applied.
+  bool toggleDifficulty(WordDifficulty difficulty) {
+    final current = Set<WordDifficulty>.of(state.allowedDifficulties);
+    if (current.contains(difficulty)) {
+      if (current.length == 1) return false;
+      current.remove(difficulty);
+    } else {
+      current.add(difficulty);
+    }
+    state = state.copyWith(allowedDifficulties: current);
+    _repo.saveAllowedDifficulties(current);
+    return true;
   }
 }
 

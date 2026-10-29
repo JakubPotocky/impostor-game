@@ -1,24 +1,19 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:impostor/core/constants.dart';
-import 'package:impostor/core/role_assignment_service.dart';
 import 'package:impostor/core/validators.dart';
-import 'package:impostor/core/word_hint_service.dart';
 import 'package:impostor/core/widgets.dart';
 import 'package:impostor/features/game_setup/game_setup_notifier.dart';
 import 'package:impostor/features/game_setup/game_setup_state.dart';
+import 'package:impostor/features/game_setup/round_factory.dart';
+import 'package:impostor/features/lan_lobby/lan_round_launcher.dart';
 import 'package:impostor/features/lan_lobby/lan_session_notifier.dart';
 import 'package:impostor/features/lan_lobby/lan_session_state.dart';
 import 'package:impostor/features/lan_lobby/models/connected_device.dart';
-import 'package:impostor/features/lan_lobby/screens/lan_ready_check_screen.dart';
 import 'package:impostor/features/players/players_notifier.dart';
 import 'package:impostor/features/players/players_screen.dart';
-import 'package:impostor/features/pre_game/pre_game_screen.dart';
-import 'package:impostor/features/role_reveal/role_reveal_screen.dart';
 import 'package:impostor/features/themes/themes_notifier.dart';
 
 class HostLobbyScreen extends ConsumerStatefulWidget {
@@ -156,152 +151,33 @@ class _HostLobbyScreenState extends ConsumerState<HostLobbyScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void _startGame() {
-    final themesState = ref.read(themesProvider).valueOrNull;
-    if (themesState == null) {
-      _showCannotStart('Themes are still loading — try again in a moment.');
-      return;
-    }
-
+  Future<void> _startGame() async {
     setState(() => _starting = true);
 
     // Read from the live LAN roster, not the pre-lobby players provider —
     // players can be added/removed from this screen after hosting starts.
-    final allPlayers = ref.read(lanSessionProvider).players;
-    final setup = ref.read(gameSetupProvider);
-    final lanNotifier = ref.read(lanSessionProvider.notifier);
-    final enabledThemes =
-        setup.selectedThemes.where((name) => name != 'Team Pairs').toList();
-    if (enabledThemes.isEmpty) {
-      _showCannotStart('Enable at least one theme to start.');
-      return;
+    final result =
+        createRound(ref, players: ref.read(lanSessionProvider).players);
+    final GameRound round;
+    switch (result) {
+      case RoundUnavailable(:final reason):
+        _showCannotStart(reason);
+        return;
+      case RoundReady():
+        round = result.round;
     }
 
-    final random = Random();
-    final hasJ999 = allPlayers.any((p) => p == 'j999');
-    final players = hasJ999
-        ? allPlayers.where((p) => p != 'j999').toList()
-        : List<String>.from(allPlayers);
-    if (players.length < 3) {
-      _showCannotStart('Need at least 3 players to start.');
-      return;
-    }
-
-    // Guard against a stale/invalid saved impostor count (e.g. carried over
-    // from a bigger game) rather than hanging or crashing role assignment.
-    final maxImpostors = players.length - 1;
-    final impostorCount = setup.impostorCount.clamp(1, maxImpostors);
-
-    final isBlankRound = hasJ999 || random.nextInt(12) == 0;
-    final theme = enabledThemes[random.nextInt(enabledThemes.length)];
-    final language = setup.language;
-    final englishWords = themesState.getEnglishWords(theme);
-    if (englishWords.isEmpty) {
-      _showCannotStart('The selected theme has no words — pick another theme.');
-      return;
-    }
-
-    final wordPicker = ref.read(wordPickerServiceProvider);
-    final wordIndex = wordPicker.pickWordIndex(
-      theme: theme,
-      wordCount: englishWords.length,
-      random: random,
-    );
-    final translatedWords = themesState.getWords(theme, language);
-    final word = wordIndex < translatedWords.length
-        ? translatedWords[wordIndex]
-        : englishWords[wordIndex];
-    final impostorHintWord = pickImpostorHintWord(
-      themeWords: translatedWords.isNotEmpty ? translatedWords : englishWords,
-      secretWord: word,
-      random: random,
-    );
-
-    List<RoleAssignment> allAssignments;
-    if (isBlankRound) {
-      allAssignments = players
-          .map((name) => RoleAssignment(playerName: name, isImpostor: true))
-          .toList();
-    } else {
-      const roleService = RoleAssignmentService();
-      allAssignments = roleService.assignRoles(
-        players: players,
-        impostorCount: impostorCount,
-        word: word,
-        random: random,
-      );
-    }
-
-    // Split by claimed identity: each connected device that picked a player
-    // gets only that player's reveal; anyone unclaimed (including the
-    // host's own role, since the host never "picks" one) comes back here
-    // for the host to reveal locally. Works for zero guests up to everyone
-    // being claimed.
-    final hostBucket = lanNotifier.distributeAssignments(
-      allAssignments: allAssignments
-          .map((a) => {
-                'playerName': a.playerName,
-                'isImpostor': a.isImpostor,
-                'word': a.word,
-              })
-          .toList(),
-      word: word,
-      themeName: theme,
-      hintsEnabled: setup.hintsEnabled,
-      themeVisibilityMode: setup.themeVisibilityMode.index,
-      impostorHintWord: impostorHintWord,
-      reducedMotion: setup.reducedMotion,
-    );
-    lanNotifier.triggerStartGame();
-
-    final hostAssignments = hostBucket
-        .map((a) => RoleAssignment(
-              playerName: a['playerName'] as String,
-              isImpostor: a['isImpostor'] as bool,
-              word: a['word'] as String?,
-            ))
-        .toList();
-
-    if (!mounted) return;
-
-    final timerSeconds = setup.timerEnabled ? setup.timerMinutes * 60 : 0;
-    Widget checkPlayersScreen(BuildContext ctx) => LanReadyCheckScreen(
-          assignments: allAssignments,
-          word: word,
-          timerSeconds: timerSeconds,
-          isBlankRound: isBlankRound,
-          reducedMotion: setup.reducedMotion,
-          suddenDeathEnabled: setup.suddenDeathEnabled,
-        );
-
-    if (hostAssignments.isEmpty) {
-      // Every player was claimed by a connected device — the host has
-      // nothing left to reveal locally, so go straight to the readiness
-      // check for the guests who are revealing on their own phones.
+    final launch = launchLanRound(ref, round);
+    if (launch.allPlayersClaimed) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text("Everyone's revealing on their own phone — checking readiness."),
+        content: Text(
+            "Everyone's revealing on their own phone — checking readiness."),
       ));
-      Navigator.of(context).push(createSlideRoute(checkPlayersScreen(context)));
-      return;
     }
+    await Navigator.of(context).push(createSlideRoute(launch.hostScreen));
 
-    Navigator.of(context).push(createSlideRoute(
-      RoleRevealScreen(
-        assignments: hostAssignments,
-        votingAssignments: allAssignments,
-        word: word,
-        themeName: theme,
-        hintsEnabled: setup.hintsEnabled,
-        themeVisibilityMode: setup.themeVisibilityMode,
-        impostorHintWord: impostorHintWord,
-        timerSeconds: timerSeconds,
-        isBlankRound: isBlankRound,
-        reducedMotion: setup.reducedMotion,
-        suddenDeathEnabled: setup.suddenDeathEnabled,
-        onComplete: checkPlayersScreen,
-        completeButtonLabel: 'Check Players',
-      ),
-    ));
+    // Back in the lobby (e.g. the host exited the round): re-enable Start.
+    if (mounted) setState(() => _starting = false);
   }
 }
 

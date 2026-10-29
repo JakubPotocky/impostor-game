@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:impostor/core/feedback_service.dart';
 import 'package:impostor/core/motion.dart';
 import 'package:impostor/core/role_assignment_service.dart';
+import 'package:impostor/core/word_difficulty.dart';
 import 'package:impostor/features/end/end_screen.dart';
 
 /// Screen where players vote to eliminate suspects.
@@ -19,6 +20,9 @@ class VotingScreen extends StatefulWidget {
     this.isBlankRound = false,
     this.reducedMotion = false,
     this.suddenDeathEnabled = true,
+    this.startingPlayerName,
+    this.wordKey,
+    this.impostorHintWord,
   });
 
   final List<RoleAssignment> assignments;
@@ -36,6 +40,16 @@ class VotingScreen extends StatefulWidget {
   /// Whether sudden death mode is enabled.
   final bool suddenDeathEnabled;
 
+  /// The player chosen to start discussion (weighted random, picked when the
+  /// round was built).
+  final String? startingPlayerName;
+
+  /// Identity of [word] for post-round difficulty rating.
+  final WordKey? wordKey;
+
+  /// The clue impostors were given, revealed on the end screen.
+  final String? impostorHintWord;
+
   @override
   State<VotingScreen> createState() => _VotingScreenState();
 }
@@ -52,6 +66,9 @@ class _VotingScreenState extends State<VotingScreen>
   final Map<int, AnimationController> _flipControllers = {};
 
   static const _feedback = FeedbackService();
+
+  /// Whether the starter banner has been dismissed.
+  bool _starterDismissed = false;
 
   /// Timer state (only used if timerSeconds > 0).
   late int _remainingSeconds;
@@ -268,40 +285,93 @@ class _VotingScreenState extends State<VotingScreen>
       if (!mounted) return;
       final result = _checkWinCondition();
       if (result != null) {
-        _gameEnding = true;
-        Future.delayed(
-            AppMotion.resolveDuration(
-              const Duration(milliseconds: 800),
-              reduced: widget.reducedMotion,
-            ), () {
-          if (!mounted) return;
-          Navigator.of(context).pushReplacement(
-            PageRouteBuilder(
-              pageBuilder: (context, animation, secondaryAnimation) =>
-                  EndScreen(
-                assignments: widget.assignments,
-                word: widget.word,
-                result: result,
-                killedIndices: _killed.toList(),
-                reducedMotion: widget.reducedMotion,
-              ),
-              transitionsBuilder:
-                  (context, animation, secondaryAnimation, child) {
-                return FadeTransition(
-                  opacity:
-                      CurvedAnimation(parent: animation, curve: Curves.easeOut),
-                  child: child,
-                );
-              },
-              transitionDuration: AppMotion.resolveDuration(
-                AppMotion.setupEnter,
-                reduced: widget.reducedMotion,
-              ),
-            ),
-          );
-        });
+        final reason = _inferEndReason(result);
+        _endGame(result, reason, delayed: true);
       } else {
         _checkSuddenDeath();
+      }
+    });
+  }
+
+  RoundEndReason _inferEndReason(GameResult result) {
+    if (result == GameResult.blankRound) return RoundEndReason.blankRound;
+    if (result == GameResult.impostorsWin && _suddenDeathActive) {
+      return RoundEndReason.suddenDeath;
+    }
+    return RoundEndReason.normalVoteResolution;
+  }
+
+  void _endGame(GameResult result, RoundEndReason reason, {bool delayed = false}) {
+    if (_gameEnding) return;
+    _gameEnding = true;
+
+    void navigate() {
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) => EndScreen(
+            assignments: widget.assignments,
+            word: widget.word,
+            result: result,
+            killedIndices: _killed.toList(),
+            reducedMotion: widget.reducedMotion,
+            endReason: reason,
+            startingPlayerName: widget.startingPlayerName,
+            wordKey: widget.wordKey,
+            impostorHintWord: widget.impostorHintWord,
+          ),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(
+              opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+              child: child,
+            );
+          },
+          transitionDuration: AppMotion.resolveDuration(
+            AppMotion.setupEnter,
+            reduced: widget.reducedMotion,
+          ),
+        ),
+      );
+    }
+
+    if (delayed) {
+      Future.delayed(
+        AppMotion.resolveDuration(
+          const Duration(milliseconds: 800),
+          reduced: widget.reducedMotion,
+        ),
+        navigate,
+      );
+    } else {
+      navigate();
+    }
+  }
+
+  void _impostorsGuessedWord() {
+    showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm Impostors Guessed?'),
+        content: const Text(
+          'This will end the round and count as an impostor win.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red.shade700,
+            ),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    ).then((confirmed) {
+      if (confirmed == true && mounted) {
+        _endGame(GameResult.impostorsWin, RoundEndReason.impostorGuessedWord);
       }
     });
   }
@@ -547,7 +617,22 @@ class _VotingScreenState extends State<VotingScreen>
                         fontSize: 14,
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
+
+                    // Starter banner (shown until dismissed)
+                    if (widget.startingPlayerName != null &&
+                        !_starterDismissed) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: _StarterBanner(
+                          playerName: widget.startingPlayerName!,
+                          onDismiss: () =>
+                              setState(() => _starterDismissed = true),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ] else
+                      const SizedBox(height: 8),
 
                     // Player grid
                     Expanded(
@@ -574,6 +659,27 @@ class _VotingScreenState extends State<VotingScreen>
                         ),
                       ),
                     ),
+
+                    // Impostors guessed the word button
+                    if (!widget.isBlankRound && !_gameEnding)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                        child: TextButton.icon(
+                          onPressed: _impostorsGuessedWord,
+                          icon: Icon(
+                            Icons.psychology_alt_rounded,
+                            color: Colors.red.shade400,
+                            size: 18,
+                          ),
+                          label: Text(
+                            'Impostors guessed the word',
+                            style: TextStyle(
+                              color: Colors.red.shade400,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -819,4 +925,62 @@ enum GameResult {
   innocentsWin,
   impostorsWin,
   blankRound,
+}
+
+// ---------------------------------------------------------------------------
+// Starter banner — shown once at the start of voting
+// ---------------------------------------------------------------------------
+class _StarterBanner extends StatelessWidget {
+  const _StarterBanner({required this.playerName, required this.onDismiss});
+
+  final String playerName;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: colorScheme.tertiaryContainer,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: colorScheme.tertiary.withAlpha(80),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.record_voice_over_rounded,
+              color: colorScheme.onTertiaryContainer, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  const TextSpan(text: 'Starter: '),
+                  TextSpan(
+                    text: playerName,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const TextSpan(text: ' goes first'),
+                ],
+              ),
+              style: TextStyle(
+                color: colorScheme.onTertiaryContainer,
+                fontSize: 13,
+              ),
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.close_rounded,
+                size: 18, color: colorScheme.onTertiaryContainer),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            onPressed: onDismiss,
+            tooltip: 'Dismiss',
+          ),
+        ],
+      ),
+    );
+  }
 }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:impostor/core/constants.dart';
 import 'package:impostor/core/widgets.dart';
+import 'package:impostor/data/theme_word.dart';
+import 'package:impostor/features/game_setup/difficulty_filter_card.dart';
 import 'package:impostor/features/game_setup/game_setup_notifier.dart';
 import 'package:impostor/features/themes/theme_detail_screen.dart';
 import 'package:impostor/features/themes/theme_export_screen.dart';
@@ -36,11 +38,16 @@ class SettingsScreen extends ConsumerWidget {
                 const SizedBox(height: 16),
                 TextField(
                   controller: wordsCtrl,
-                  maxLines: 4,
+                  minLines: 4,
+                  maxLines: 8,
+                  keyboardType: TextInputType.multiline,
                   textCapitalization: TextCapitalization.sentences,
                   decoration: const InputDecoration(
-                    labelText: 'Words (comma-separated)',
-                    hintText: 'Red, Blue, Green, ...',
+                    labelText: 'Words — one per line',
+                    hintText: 'Red: Roses\nBlue: Sky\nGreen',
+                    helperText: 'Add an impostor hint after a colon',
+                    helperMaxLines: 2,
+                    alignLabelWithHint: true,
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -55,13 +62,9 @@ class SettingsScreen extends ConsumerWidget {
             FilledButton(
               onPressed: () {
                 final name = nameCtrl.text.trim();
-                final rawWords = wordsCtrl.text
-                    .split(',')
-                    .map((w) => w.trim())
-                    .where((w) => w.isNotEmpty)
-                    .toList();
-                if (name.isNotEmpty && rawWords.isNotEmpty) {
-                  ref.read(themesProvider.notifier).addCategory(name, rawWords);
+                final words = parseWordList(wordsCtrl.text);
+                if (name.isNotEmpty && words.isNotEmpty) {
+                  ref.read(themesProvider.notifier).addCategory(name, words);
                   Navigator.of(ctx).pop();
                 }
               },
@@ -306,6 +309,13 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
 
+          // --- Word difficulty filter ---
+          const StaggeredFadeIn(
+            delay: 3,
+            child: DifficultyFilterCard(),
+          ),
+          const SizedBox(height: 16),
+
           // --- Manage themes (browse words, add category) ---
           StaggeredFadeIn(
             delay: 4,
@@ -324,7 +334,7 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Browse, add, edit or delete words in each category',
+                    'Browse words, edit hints and difficulty, or add your own',
                     style: TextStyle(
                       color: colorScheme.onSurfaceVariant,
                       fontSize: 12,

@@ -1,23 +1,15 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:impostor/core/constants.dart';
-import 'package:impostor/core/role_assignment_service.dart';
 import 'package:impostor/core/validators.dart';
 import 'package:impostor/core/widgets.dart';
-import 'package:impostor/core/word_hint_service.dart';
-import 'package:impostor/core/word_picker_service.dart';
+import 'package:impostor/features/game_setup/difficulty_filter_card.dart';
 import 'package:impostor/features/game_setup/game_setup_notifier.dart';
 import 'package:impostor/features/game_setup/game_setup_state.dart';
+import 'package:impostor/features/game_setup/round_factory.dart';
 import 'package:impostor/features/players/players_notifier.dart';
 import 'package:impostor/features/role_reveal/role_reveal_screen.dart';
 import 'package:impostor/features/themes/themes_notifier.dart';
-
-/// Provider for the word picker, persists across the session.
-final wordPickerServiceProvider = Provider<WordPickerService>((ref) {
-  return WordPickerService();
-});
 
 /// Pre-game review screen: shows players summary, impostor count, and start.
 class PreGameScreen extends ConsumerWidget {
@@ -243,6 +235,13 @@ class PreGameScreen extends ConsumerWidget {
                 ],
               ),
             ),
+          ),
+          const SizedBox(height: 16),
+
+          // --- Word difficulty filter ---
+          const StaggeredFadeIn(
+            delay: 2,
+            child: DifficultyFilterCard(),
           ),
           const SizedBox(height: 16),
 
@@ -549,8 +548,7 @@ class PreGameScreen extends ConsumerWidget {
             delay: 8,
             child: StartGameButton(
               canStart: canStart,
-              onPressed: () =>
-                  _startGame(context, ref, themesAsync.valueOrNull),
+              onPressed: () => _startGame(context, ref),
             ),
           ),
           const SizedBox(height: 40),
@@ -559,87 +557,33 @@ class PreGameScreen extends ConsumerWidget {
     );
   }
 
-  void _startGame(
-    BuildContext context,
-    WidgetRef ref,
-    dynamic themesState,
-  ) {
-    if (themesState == null) return;
-    final allPlayers = ref.read(playersProvider).players;
-    final setup = ref.read(gameSetupProvider);
-    final enabledThemes =
-        setup.selectedThemes.where((name) => name != 'Team Pairs').toList();
-    if (enabledThemes.isEmpty) return;
-
-    final random = Random();
-
-    // Check for "j999" trigger — remove that player and force blank round.
-    final hasJ999 = allPlayers.any((p) => p == 'j999');
-    final players = hasJ999
-        ? allPlayers.where((p) => p != 'j999').toList()
-        : List<String>.from(allPlayers);
-
-    if (players.length < AppConstants.minPlayers) return;
-
-    // ~8 % random chance for blank round, or forced by j999 trigger.
-    final isBlankRound = hasJ999 || random.nextInt(12) == 0;
-
-    final theme = enabledThemes[random.nextInt(enabledThemes.length)];
-    final language = setup.language;
-    final englishWords = themesState.getEnglishWords(theme);
-    if (englishWords.isEmpty) return;
-
-    final wordPicker = ref.read(wordPickerServiceProvider);
-    final wordIndex = wordPicker.pickWordIndex(
-      theme: theme,
-      wordCount: englishWords.length,
-      random: random,
-    );
-
-    final translatedWords = themesState.getWords(theme, language);
-    final word = wordIndex < translatedWords.length
-        ? translatedWords[wordIndex]
-        : englishWords[wordIndex];
-    final impostorHintWord = pickImpostorHintWord(
-      themeWords: translatedWords.isNotEmpty ? translatedWords : englishWords,
-      secretWord: word,
-      random: random,
-    );
-
-    List<RoleAssignment> assignments;
-    if (isBlankRound) {
-      // Blank round: everyone is the impostor — nobody sees the word.
-      assignments = players
-          .map((name) => RoleAssignment(
-                playerName: name,
-                isImpostor: true,
-              ))
-          .toList();
-    } else {
-      const roleService = RoleAssignmentService();
-      assignments = roleService.assignRoles(
-        players: players,
-        impostorCount: setup.impostorCount,
-        word: word,
-        random: random,
-      );
+  void _startGame(BuildContext context, WidgetRef ref) {
+    final result =
+        createRound(ref, players: ref.read(playersProvider).players);
+    switch (result) {
+      case RoundUnavailable(:final reason):
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(reason)));
+      case RoundReady(:final round):
+        final setup = ref.read(gameSetupProvider);
+        Navigator.of(context).push(
+          createSlideRoute(
+            RoleRevealScreen(
+              assignments: round.assignments,
+              word: round.word,
+              themeName: round.themeName,
+              hintsEnabled: setup.hintsEnabled,
+              themeVisibilityMode: setup.themeVisibilityMode,
+              impostorHintWord: round.impostorHint,
+              timerSeconds: setup.timerEnabled ? setup.timerMinutes * 60 : 0,
+              isBlankRound: round.isBlankRound,
+              reducedMotion: setup.reducedMotion,
+              suddenDeathEnabled: setup.suddenDeathEnabled,
+              startingPlayerName: round.startingPlayerName,
+              wordKey: round.wordKey,
+            ),
+          ),
+        );
     }
-
-    Navigator.of(context).push(
-      createSlideRoute(
-        RoleRevealScreen(
-          assignments: assignments,
-          word: word,
-          themeName: theme,
-          hintsEnabled: setup.hintsEnabled,
-          themeVisibilityMode: setup.themeVisibilityMode,
-          impostorHintWord: impostorHintWord,
-          timerSeconds: setup.timerEnabled ? setup.timerMinutes * 60 : 0,
-          isBlankRound: isBlankRound,
-          reducedMotion: setup.reducedMotion,
-          suddenDeathEnabled: setup.suddenDeathEnabled,
-        ),
-      ),
-    );
   }
 }

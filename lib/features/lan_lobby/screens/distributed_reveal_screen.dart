@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:impostor/core/reveal_palette.dart';
 import 'package:impostor/core/role_assignment_service.dart';
 import 'package:impostor/features/game_setup/game_setup_state.dart';
 import 'package:impostor/features/lan_lobby/lan_session_notifier.dart';
@@ -297,10 +298,14 @@ class _RevealCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final isImp = isImpostor;
+    // Same card color for every role — see RevealPalette.
+    final background = Color.alphaBlend(
+        RevealPalette.accent.withAlpha(45), colorScheme.surfaceContainerHigh);
+    final foreground = colorScheme.onSurface;
 
     return Card(
       elevation: 4,
-      color: isImp ? colorScheme.errorContainer : colorScheme.primaryContainer,
+      color: background,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Container(
         width: double.infinity,
@@ -311,18 +316,14 @@ class _RevealCard extends StatelessWidget {
             Icon(
               isImp ? Icons.warning_amber_rounded : Icons.check_circle_rounded,
               size: 64,
-              color: isImp
-                  ? colorScheme.onErrorContainer
-                  : colorScheme.onPrimaryContainer,
+              color: RevealPalette.accent,
             ),
             const SizedBox(height: 16),
             Text(
               isImp ? 'You are the IMPOSTOR' : word,
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.w900,
-                    color: isImp
-                        ? colorScheme.onErrorContainer
-                        : colorScheme.onPrimaryContainer,
+                    color: foreground,
                   ),
               textAlign: TextAlign.center,
             ),
@@ -332,9 +333,7 @@ class _RevealCard extends StatelessWidget {
                   ? 'Blend in. Don\'t get caught!'
                   : 'This is the secret word.',
               style: TextStyle(
-                color: isImp
-                    ? colorScheme.onErrorContainer.withAlpha(180)
-                    : colorScheme.onPrimaryContainer.withAlpha(180),
+                color: foreground.withAlpha(180),
               ),
               textAlign: TextAlign.center,
             ),
@@ -343,9 +342,7 @@ class _RevealCard extends StatelessWidget {
               Text(
                 'Theme: ${themeName.trim()}',
                 style: TextStyle(
-                  color: isImp
-                      ? colorScheme.onErrorContainer.withAlpha(165)
-                      : colorScheme.onPrimaryContainer.withAlpha(165),
+                  color: foreground.withAlpha(165),
                   fontSize: 13,
                 ),
                 textAlign: TextAlign.center,
@@ -356,9 +353,9 @@ class _RevealCard extends StatelessWidget {
                 (impostorHintWord ?? '').trim().isNotEmpty) ...[
               const SizedBox(height: 12),
               Text(
-                'Hint word: ${impostorHintWord!.trim()}',
+                'Hint: ${impostorHintWord!.trim()}',
                 style: TextStyle(
-                  color: colorScheme.onErrorContainer.withAlpha(180),
+                  color: foreground.withAlpha(180),
                   fontStyle: FontStyle.italic,
                   fontSize: 13,
                 ),

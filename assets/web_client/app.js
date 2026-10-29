@@ -340,7 +340,7 @@
     const showHint = isImpostor && assignmentMeta.hintsEnabled &&
       (assignmentMeta.impostorHintWord || '').trim() !== '';
     els.revealHint.classList.toggle('hidden', !showHint);
-    if (showHint) els.revealHintText.textContent = `Hint word: ${assignmentMeta.impostorHintWord.trim()}`;
+    if (showHint) els.revealHintText.textContent = `Hint: ${assignmentMeta.impostorHintWord.trim()}`;
 
     els.revealActionBtn.textContent =
       revealIndex + 1 >= total ? 'Finish' : 'Pass to Next Player';

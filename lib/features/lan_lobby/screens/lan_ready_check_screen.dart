@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:impostor/core/role_assignment_service.dart';
+import 'package:impostor/core/word_difficulty.dart';
 import 'package:impostor/core/widgets.dart';
 import 'package:impostor/features/lan_lobby/lan_session_notifier.dart';
 import 'package:impostor/features/lan_lobby/lan_session_state.dart';
@@ -25,6 +26,9 @@ class LanReadyCheckScreen extends ConsumerWidget {
     required this.isBlankRound,
     required this.reducedMotion,
     required this.suddenDeathEnabled,
+    this.startingPlayerName,
+    this.wordKey,
+    this.impostorHintWord,
   });
 
   final List<RoleAssignment> assignments;
@@ -33,6 +37,9 @@ class LanReadyCheckScreen extends ConsumerWidget {
   final bool isBlankRound;
   final bool reducedMotion;
   final bool suddenDeathEnabled;
+  final String? startingPlayerName;
+  final WordKey? wordKey;
+  final String? impostorHintWord;
 
   GameMode _currentMode(LanSessionState session) {
     final modeName = session.session?.mode;
@@ -49,6 +56,9 @@ class LanReadyCheckScreen extends ConsumerWidget {
         isBlankRound: isBlankRound,
         reducedMotion: reducedMotion,
         suddenDeathEnabled: suddenDeathEnabled,
+        startingPlayerName: startingPlayerName,
+        wordKey: wordKey,
+        impostorHintWord: impostorHintWord,
       ),
     ));
   }

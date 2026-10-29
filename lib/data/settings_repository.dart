@@ -1,4 +1,5 @@
 import 'package:hive/hive.dart';
+import 'package:impostor/core/word_difficulty.dart';
 
 /// Repository that persists game settings between sessions using Hive.
 class SettingsRepository {
@@ -15,6 +16,7 @@ class SettingsRepository {
   static const String _keySuddenDeathEnabled = 'suddenDeathEnabled';
   static const String _keyDarkMode = 'darkMode';
   static const String _keyLastSeenVersion = 'lastSeenVersion';
+  static const String _keyAllowedDifficulties = 'allowedDifficulties';
 
   Box<dynamic>? _box;
 
@@ -126,5 +128,25 @@ class SettingsRepository {
 
   Future<void> saveLastSeenVersion(String version) async {
     await _safeBox.put(_keyLastSeenVersion, version);
+  }
+
+  /// Difficulties a word may have to be picked. Defaults to all of them, and
+  /// never returns an empty set (that would make every word ineligible).
+  Set<WordDifficulty> getAllowedDifficulties() {
+    final raw = _safeBox.get(_keyAllowedDifficulties) as String?;
+    if (raw == null || raw.isEmpty) return WordDifficulty.values.toSet();
+    final parsed = raw
+        .split(',')
+        .map((name) => WordDifficulty.values.where((d) => d.name == name))
+        .expand((matches) => matches)
+        .toSet();
+    return parsed.isEmpty ? WordDifficulty.values.toSet() : parsed;
+  }
+
+  Future<void> saveAllowedDifficulties(Set<WordDifficulty> difficulties) async {
+    await _safeBox.put(
+      _keyAllowedDifficulties,
+      difficulties.map((d) => d.name).join(','),
+    );
   }
 }

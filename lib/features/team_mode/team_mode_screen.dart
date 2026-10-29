@@ -4,10 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:impostor/core/feedback_service.dart';
 import 'package:impostor/core/motion.dart';
+import 'package:impostor/core/reveal_palette.dart';
 import 'package:impostor/data/game_history_repository.dart';
 import 'package:impostor/features/game_setup/game_setup_notifier.dart';
 import 'package:impostor/features/players/players_notifier.dart';
-import 'package:impostor/features/pre_game/pre_game_screen.dart';
+import 'package:impostor/features/game_setup/round_factory.dart';
 import 'package:impostor/features/themes/themes_notifier.dart';
 
 /// Team mode: 2 teams with 2 different (similar) words and 1 impostor.
@@ -158,8 +159,7 @@ class _TeamModeScreenState extends ConsumerState<TeamModeScreen>
 
   void _revealRole() {
     if (_assignments == null) return;
-    final a = _assignments![_currentIndex];
-    _feedback.roleReveal(isImpostor: a.isImpostor);
+    _feedback.roleReveal();
     setState(() => _revealed = true);
     _revealCtrl.forward(from: 0);
   }
@@ -526,7 +526,7 @@ class _TeamModeScreenState extends ConsumerState<TeamModeScreen>
     final a = _assignments![_currentIndex];
     final isImpostor = a.isImpostor;
     final colorScheme = Theme.of(context).colorScheme;
-    final roleColor = isImpostor ? Colors.red.shade400 : Colors.blue.shade400;
+    final roleColor = RevealPalette.accent;
 
     return ScaleTransition(
       scale: _revealScale,
@@ -575,7 +575,7 @@ class _TeamModeScreenState extends ConsumerState<TeamModeScreen>
                     borderRadius: BorderRadius.circular(16),
                     color: colorScheme.surfaceContainerHigh,
                     border: Border.all(
-                      color: Colors.blue.withAlpha(60),
+                      color: RevealPalette.accent.withAlpha(60),
                       width: 2,
                     ),
                   ),
@@ -583,7 +583,7 @@ class _TeamModeScreenState extends ConsumerState<TeamModeScreen>
                     a.word!,
                     style: Theme.of(context).textTheme.displaySmall?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: Colors.blue.shade300,
+                          color: RevealPalette.accentSoft,
                         ),
                     textAlign: TextAlign.center,
                   ),
@@ -602,7 +602,7 @@ class _TeamModeScreenState extends ConsumerState<TeamModeScreen>
                   'Blend in with a team.\nDon\'t get caught!',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.red.shade200.withAlpha(180),
+                    color: colorScheme.onSurface.withAlpha(150),
                     fontSize: 14,
                     height: 1.5,
                   ),

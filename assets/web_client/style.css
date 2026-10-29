@@ -234,7 +234,9 @@ h1 {
   min-height: 320px;
   margin: 8px 0 20px;
 }
-.reveal-card.impostor { background: var(--danger-container); }
+/* Same background for every role on purpose: the screen's glow lights up the
+   holder's face, so a distinct impostor color would give them away. */
+.reveal-card.impostor,
 .reveal-card.innocent { background: var(--success-container); }
 
 .reveal-state {

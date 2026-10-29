@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:hive/hive.dart';
+import 'package:impostor/data/theme_word.dart';
 
 /// Repository that persists user-created / edited themes using Hive.
 ///
@@ -22,24 +23,15 @@ class CustomThemeRepository {
     return _box!;
   }
 
-  /// Returns custom themes as a map of category name -> language -> word list.
-  Map<String, Map<String, List<String>>> getCustomThemes() {
+  /// Returns custom themes as a map of category name -> language -> words.
+  ThemeCatalog getCustomThemes() {
     final raw = _safeBox.get(_keyThemes) as String?;
     if (raw == null || raw.isEmpty) return {};
-    final decoded = json.decode(raw) as Map<String, dynamic>;
-    return decoded.map((theme, langMap) {
-      final languages = (langMap as Map<String, dynamic>).map(
-        (lang, words) =>
-            MapEntry(lang, (words as List<dynamic>).cast<String>()),
-      );
-      return MapEntry(theme, languages);
-    });
+    return decodeThemeCatalog(json.decode(raw) as Map<String, dynamic>);
   }
 
   /// Saves the entire custom themes map.
-  Future<void> saveCustomThemes(
-      Map<String, Map<String, List<String>>> themes) async {
-    final encoded = json.encode(themes);
-    await _safeBox.put(_keyThemes, encoded);
+  Future<void> saveCustomThemes(ThemeCatalog themes) async {
+    await _safeBox.put(_keyThemes, json.encode(encodeThemeCatalog(themes)));
   }
 }

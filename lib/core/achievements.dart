@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:impostor/core/role_assignment_service.dart' show RoundEndReason;
 import 'package:impostor/core/streaks.dart';
 import 'package:impostor/data/game_history_repository.dart';
 
@@ -91,6 +92,28 @@ const List<Achievement> achievementCatalog = [
     isUnlockedFor: _blankStare,
   ),
   Achievement(
+    id: 'undercover_agent',
+    title: 'Undercover Agent',
+    description: 'Win as an impostor in Undercover mode — without even '
+        'knowing you were one.',
+    icon: Icons.visibility_off_rounded,
+    isUnlockedFor: _undercoverAgent,
+  ),
+  Achievement(
+    id: 'last_word',
+    title: 'Last Word',
+    description: 'Win as an impostor by guessing the secret word.',
+    icon: Icons.record_voice_over_rounded,
+    isUnlockedFor: _lastWord,
+  ),
+  Achievement(
+    id: 'marathon',
+    title: 'Marathon',
+    description: 'Play 10 games in a single day.',
+    icon: Icons.nightlife_rounded,
+    isUnlockedFor: _marathon,
+  ),
+  Achievement(
     id: 'century_club',
     title: 'Century Club',
     description: 'Play 100 games.',
@@ -122,3 +145,23 @@ bool _blankStare(String player, List<GameRecord> history) => history
 
 bool _centuryClub(String player, List<GameRecord> history) =>
     _gamesPlayed(player, history) >= 100;
+
+bool _wonAsImpostor(String player, GameRecord g) =>
+    g.impostorNames.contains(player) && g.winnerNames.contains(player);
+
+bool _undercoverAgent(String player, List<GameRecord> history) => history
+    .any((g) => g.mode == 'undercover' && _wonAsImpostor(player, g));
+
+bool _lastWord(String player, List<GameRecord> history) => history.any((g) =>
+    g.endReason == RoundEndReason.impostorGuessedWord &&
+    _wonAsImpostor(player, g));
+
+bool _marathon(String player, List<GameRecord> history) {
+  final perDay = <DateTime, int>{};
+  for (final g in history.where((g) => g.players.contains(player))) {
+    final t = g.timestamp;
+    final day = DateTime(t.year, t.month, t.day);
+    if ((perDay[day] = (perDay[day] ?? 0) + 1) >= 10) return true;
+  }
+  return false;
+}

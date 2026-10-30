@@ -86,8 +86,18 @@
     }));
   }
 
+  const CONN_LABELS = {
+    connecting: 'Connecting…',
+    connected: 'Connected to host',
+    lost: 'Connection lost',
+  };
+
   function setConnDot(state) {
     els.connDot.className = 'conn-dot conn-' + state;
+    // Color alone isn't readable by screen readers (or colorblind players).
+    const label = CONN_LABELS[state] || state;
+    els.connDot.title = label;
+    els.connDot.setAttribute('aria-label', label);
   }
 
   function showScreen(id) {

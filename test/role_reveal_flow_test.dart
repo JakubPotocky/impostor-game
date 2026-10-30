@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:impostor/core/feedback_service.dart';
 import 'package:impostor/core/reveal_palette.dart';
 import 'package:impostor/core/role_assignment_service.dart';
-import 'package:impostor/features/game_setup/feedback_provider.dart';
 import 'package:impostor/features/role_reveal/role_reveal_screen.dart';
 import 'package:impostor/features/voting/voting_screen.dart';
+
+import 'helpers/test_app.dart';
 
 const _everyoneImpostor = [
   RoleAssignment(playerName: 'Alice', isImpostor: true),
@@ -20,22 +19,9 @@ const _mixed = [
   RoleAssignment(playerName: 'Charlie', isImpostor: false, word: 'Lion'),
 ];
 
-Widget _app(Widget home) => ProviderScope(
-      overrides: [
-        feedbackServiceProvider.overrideWithValue(
-          const FeedbackService(soundEnabled: false, hapticsEnabled: false),
-        ),
-      ],
-      child: MaterialApp(home: home),
-    );
+Widget _app(Widget home) => testApp(home);
 
-Future<void> _settle(WidgetTester tester) async {
-  // Reveal screens have looping effects, so pump fixed frames instead of
-  // pumpAndSettle.
-  for (var i = 0; i < 10; i++) {
-    await tester.pump(const Duration(milliseconds: 100));
-  }
-}
+Future<void> _settle(WidgetTester tester) => pumpFrames(tester);
 
 void main() {
   testWidgets('all-impostor round reaches voting with a starter announced',

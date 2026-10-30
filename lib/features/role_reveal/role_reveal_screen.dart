@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:impostor/core/screen_awake.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:impostor/core/animated_effects.dart';
@@ -9,6 +10,7 @@ import 'package:impostor/core/reveal_palette.dart';
 import 'package:impostor/core/role_assignment_service.dart';
 import 'package:impostor/core/word_difficulty.dart';
 import 'package:impostor/features/game_setup/game_setup_state.dart';
+import 'package:impostor/features/players/player_avatar_widget.dart';
 import 'package:impostor/features/role_reveal/role_reveal_state.dart';
 import 'package:impostor/features/voting/voting_screen.dart';
 
@@ -110,6 +112,7 @@ class _RoleRevealScreenState extends ConsumerState<RoleRevealScreen>
   @override
   void initState() {
     super.initState();
+    ScreenAwake.acquire();
     _state = RoleRevealState(
       currentIndex: 0,
       totalPlayers: widget.assignments.length,
@@ -168,6 +171,7 @@ class _RoleRevealScreenState extends ConsumerState<RoleRevealScreen>
     _setSecureFlag(false);
     _fadeCtrl.dispose();
     _revealCtrl.dispose();
+    ScreenAwake.release();
     super.dispose();
   }
 
@@ -378,6 +382,9 @@ class _RoleRevealScreenState extends ConsumerState<RoleRevealScreen>
             ),
             const SizedBox(height: 32),
 
+            PlayerAvatar(name: assignment.playerName, size: 72),
+            const SizedBox(height: 16),
+
             // Player name
             Text(
               assignment.playerName,
@@ -517,6 +524,27 @@ class _RoleRevealScreenState extends ConsumerState<RoleRevealScreen>
     ColorScheme colorScheme,
     Color roleColor, {
     bool showNextButton = true,
+  }) {
+    return Semantics(
+      liveRegion: true,
+      child: _roleColumn(
+        context,
+        assignment,
+        isImpostor,
+        colorScheme,
+        roleColor,
+        showNextButton: showNextButton,
+      ),
+    );
+  }
+
+  Widget _roleColumn(
+    BuildContext context,
+    RoleAssignment assignment,
+    bool isImpostor,
+    ColorScheme colorScheme,
+    Color roleColor, {
+    required bool showNextButton,
   }) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -753,6 +781,8 @@ class _PeekPrompt extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        PlayerAvatar(name: playerName, size: 72),
+        const SizedBox(height: 16),
         Text(
           playerName,
           style: Theme.of(context)

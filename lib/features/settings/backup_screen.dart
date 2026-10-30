@@ -6,6 +6,8 @@ import 'package:impostor/data/game_history_repository.dart';
 import 'package:impostor/features/changelog/changelog_screen.dart';
 import 'package:impostor/features/game_setup/game_setup_notifier.dart';
 import 'package:impostor/features/game_setup/presets_notifier.dart';
+import 'package:impostor/features/players/avatars_notifier.dart';
+import 'package:impostor/features/players/groups_notifier.dart';
 import 'package:impostor/features/players/players_notifier.dart';
 import 'package:impostor/features/themes/themes_notifier.dart';
 import 'package:impostor/features/themes/word_difficulty_notifier.dart';
@@ -88,7 +90,9 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
       ..invalidate(playersProvider)
       ..invalidate(themesProvider)
       ..invalidate(wordDifficultyProvider)
-      ..invalidate(presetsProvider);
+      ..invalidate(presetsProvider)
+      ..invalidate(avatarsProvider)
+      ..invalidate(groupsProvider);
     _setStatus('Backup restored.');
   }
 
@@ -117,8 +121,9 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
           _ActionCard(
             icon: Icons.cloud_upload_rounded,
             title: 'Back Up',
-            description: 'Copies players, game history, achievements, custom '
-                'themes, word ratings, presets and settings.',
+            description: 'Copies players, groups, avatars, game history, '
+                'achievements, custom themes, word ratings, presets and '
+                'settings.',
             buttonLabel: 'Copy Backup',
             onPressed: _busy ? null : _export,
           ),

@@ -1,4 +1,6 @@
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:impostor/core/constants.dart';
 import 'package:impostor/core/word_difficulty.dart';
 import 'package:impostor/data/settings_repository.dart';
 import 'package:impostor/features/game_setup/game_setup_state.dart';
@@ -22,11 +24,15 @@ class GameSetupNotifier extends Notifier<GameSetupState> {
           .values[_repo.getThemeVisibilityMode().clamp(0, 2)],
       reducedMotion: _repo.getReducedMotion(),
       suddenDeathEnabled: _repo.getSuddenDeathEnabled(),
-      darkMode: _repo.getDarkMode(),
+      themeMode: _repo.getThemeMode(),
       allowedDifficulties: _repo.getAllowedDifficulties(),
       soundEnabled: _repo.getSoundEnabled(),
       hapticsEnabled: _repo.getHapticsEnabled(),
       holdToReveal: _repo.getHoldToReveal(),
+      undercoverMode: _repo.getUndercoverMode(),
+      mysteryImpostors: _repo.getMysteryImpostors(),
+      lastChanceGuess: _repo.getLastChanceGuess(),
+      familyMode: _repo.getFamilyMode(),
     );
   }
 
@@ -81,9 +87,44 @@ class GameSetupNotifier extends Notifier<GameSetupState> {
     _repo.saveSuddenDeathEnabled(enabled);
   }
 
-  void setDarkMode(bool dark) {
-    state = state.copyWith(darkMode: dark);
-    _repo.saveDarkMode(dark);
+  void setThemeMode(ThemeMode mode) {
+    state = state.copyWith(themeMode: mode);
+    _repo.saveThemeMode(mode);
+  }
+
+  void setUndercoverMode(bool enabled) {
+    state = state.copyWith(undercoverMode: enabled);
+    _repo.saveUndercoverMode(enabled);
+  }
+
+  void setMysteryImpostors(bool enabled) {
+    state = state.copyWith(mysteryImpostors: enabled);
+    _repo.saveMysteryImpostors(enabled);
+  }
+
+  void setLastChanceGuess(bool enabled) {
+    state = state.copyWith(lastChanceGuess: enabled);
+    _repo.saveLastChanceGuess(enabled);
+  }
+
+  /// Turning Family mode on also deselects mature themes, so nothing hidden
+  /// stays silently selected.
+  void setFamilyMode(bool enabled) {
+    final themes = enabled
+        ? state.selectedThemes
+            .where((t) => !AppConstants.matureThemes.contains(t))
+            .toList()
+        : state.selectedThemes;
+    state = state.copyWith(familyMode: enabled, selectedThemes: themes);
+    _repo
+      ..saveFamilyMode(enabled)
+      ..saveSelectedThemes(themes);
+  }
+
+  /// Replaces the whole theme selection (e.g. "All", "None", "Surprise me").
+  void setSelectedThemes(List<String> themes) {
+    state = state.copyWith(selectedThemes: List.unmodifiable(themes));
+    _repo.saveSelectedThemes(themes);
   }
 
   void setSoundEnabled(bool enabled) {
@@ -114,7 +155,10 @@ class GameSetupNotifier extends Notifier<GameSetupState> {
       ..saveHintsEnabled(state.hintsEnabled)
       ..saveThemeVisibilityMode(state.themeVisibilityMode.index)
       ..saveSuddenDeathEnabled(state.suddenDeathEnabled)
-      ..saveAllowedDifficulties(state.allowedDifficulties);
+      ..saveAllowedDifficulties(state.allowedDifficulties)
+      ..saveUndercoverMode(state.undercoverMode)
+      ..saveMysteryImpostors(state.mysteryImpostors)
+      ..saveLastChanceGuess(state.lastChanceGuess);
   }
 
   /// Toggles whether words of [difficulty] can be picked.

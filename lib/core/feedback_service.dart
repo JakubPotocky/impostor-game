@@ -34,6 +34,15 @@ class FeedbackService {
     await _haptic(HapticFeedback.heavyImpact);
   }
 
+  /// Discussion timer ran out: a distinct double buzz plus a click, so the
+  /// table notices even if nobody is watching the phone.
+  Future<void> timeUp() async {
+    await _haptic(HapticFeedback.heavyImpact);
+    await Future.delayed(const Duration(milliseconds: 150));
+    await _haptic(HapticFeedback.heavyImpact);
+    await click();
+  }
+
   /// Click sound.
   Future<void> click() async {
     if (soundEnabled) await SystemSound.play(SystemSoundType.click);

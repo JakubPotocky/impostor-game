@@ -25,6 +25,7 @@ final wordPickerServiceProvider = Provider<WordPickerService>((ref) {
 class GameRound {
   const GameRound({
     required this.assignments,
+    required this.revealAssignments,
     required this.word,
     required this.themeName,
     required this.wordKey,
@@ -33,7 +34,15 @@ class GameRound {
     required this.startingPlayerName,
   });
 
+  /// The real roles, used for voting and results.
   final List<RoleAssignment> assignments;
+
+  /// What each player is shown during the reveal (same order). Differs from
+  /// [assignments] only in Undercover rounds, where impostors see a decoy.
+  final List<RoleAssignment> revealAssignments;
+
+  /// Whether impostors got a decoy word this round.
+  bool get isUndercover => assignments.any((a) => a.decoyWord != null);
 
   /// The secret word in the selected language.
   final String word;
@@ -89,6 +98,7 @@ class RoundFactory {
   /// One round in this many is a blank round (~8 %).
   static const int blankRoundOdds = 12;
 
+
   /// Indices of words in [theme] whose difficulty is in [allowed].
   ///
   /// Only indices with an English entry are considered, since English is the
@@ -119,6 +129,8 @@ class RoundFactory {
     required WordPickerService wordPicker,
     required Random random,
     Map<String, WordVote> votes = const {},
+    bool undercover = false,
+    bool mysteryImpostorCount = false,
   }) {
     final forceBlankRound = players.contains(blankRoundTrigger);
     final roster = players.where((p) => p != blankRoundTrigger).toList();
@@ -150,8 +162,11 @@ class RoundFactory {
           : 'The selected themes have no words — pick another theme.');
     }
 
-    final isBlankRound =
-        forceBlankRound || random.nextInt(blankRoundOdds) == 0;
+    // Undercover impostors don't know their role, so an all-impostor blank
+    // round would be indistinguishable from a normal one — skip it unless
+    // explicitly forced.
+    final isBlankRound = forceBlankRound ||
+        (!undercover && random.nextInt(blankRoundOdds) == 0);
 
     final eligibleThemes = eligibleByTheme.keys.toList();
     final theme = eligibleThemes[random.nextInt(eligibleThemes.length)];
@@ -185,21 +200,44 @@ class RoundFactory {
           random: random,
         );
 
+    // A saved count can be stale (e.g. from a bigger game).
+    final maxImpostors = impostorCount.clamp(1, roster.length - 1);
+    final roundImpostors = mysteryImpostorCount
+        ? 1 + random.nextInt(maxImpostors)
+        : maxImpostors;
+
+    final decoy = undercover && !isBlankRound
+        ? pickDecoyWord(
+            themeWords: displayList.map((w) => w.text).toList(),
+            secretWord: entry.text,
+            random: random,
+          )
+        : null;
+
     final assignments = isBlankRound
         ? [
             for (final name in roster)
               RoleAssignment(playerName: name, isImpostor: true),
           ]
-        : roleService.assignRoles(
-            players: roster,
-            // A saved count can be stale (e.g. from a bigger game).
-            impostorCount: impostorCount.clamp(1, roster.length - 1),
-            word: entry.text,
-            random: random,
-          );
+        : [
+            for (final a in roleService.assignRoles(
+              players: roster,
+              impostorCount: roundImpostors,
+              word: entry.text,
+              random: random,
+            ))
+              a.isImpostor && decoy != null
+                  ? RoleAssignment(
+                      playerName: a.playerName,
+                      isImpostor: true,
+                      decoyWord: decoy,
+                    )
+                  : a,
+          ];
 
     return RoundReady(GameRound(
       assignments: assignments,
+      revealAssignments: [for (final a in assignments) a.asRevealed],
       word: entry.text,
       themeName: theme,
       wordKey: WordKey(theme: theme, englishWord: english[index].text),
@@ -237,7 +275,11 @@ RoundBuildResult createRound(WidgetRef ref, {required List<String> players}) {
   final setup = ref.read(gameSetupProvider);
   return const RoundFactory().build(
     players: players,
-    enabledThemes: setup.selectedThemes,
+    enabledThemes: setup.familyMode
+        ? setup.selectedThemes
+            .where((t) => !AppConstants.matureThemes.contains(t))
+            .toList()
+        : setup.selectedThemes,
     impostorCount: setup.impostorCount,
     language: setup.language,
     allowedDifficulties: setup.allowedDifficulties,
@@ -246,5 +288,7 @@ RoundBuildResult createRound(WidgetRef ref, {required List<String> players}) {
     wordPicker: ref.read(wordPickerServiceProvider),
     random: Random(),
     votes: ref.read(wordVoteRepositoryProvider).getVotes(),
+    undercover: setup.undercoverMode,
+    mysteryImpostorCount: setup.mysteryImpostors,
   );
 }

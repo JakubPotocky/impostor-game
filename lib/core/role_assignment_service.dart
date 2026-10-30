@@ -35,6 +35,7 @@ class RoleAssignment {
     required this.playerName,
     required this.isImpostor,
     this.word,
+    this.decoyWord,
   });
 
   final String playerName;
@@ -42,6 +43,16 @@ class RoleAssignment {
 
   /// The secret word — null for impostors.
   final String? word;
+
+  /// Undercover mode only: the similar word this impostor was shown instead
+  /// of the secret word. Null in every other mode.
+  final String? decoyWord;
+
+  /// What this player sees during the reveal. Undercover impostors are shown
+  /// as an ordinary player holding their decoy word — they don't know.
+  RoleAssignment get asRevealed => decoyWord == null
+      ? this
+      : RoleAssignment(playerName: playerName, isImpostor: false, word: decoyWord);
 }
 
 /// Pure logic service for assigning roles.

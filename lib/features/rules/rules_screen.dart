@@ -8,7 +8,7 @@ class RulesScreen extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Rules'),
@@ -19,6 +19,7 @@ class RulesScreen extends StatelessWidget {
             tabs: [
               Tab(text: '60 sec'),
               Tab(text: 'Detailed'),
+              Tab(text: 'Variants'),
               Tab(text: 'Connecting'),
             ],
           ),
@@ -27,6 +28,7 @@ class RulesScreen extends StatelessWidget {
           children: [
             _QuickRules(colorScheme: colorScheme),
             _DetailedRules(colorScheme: colorScheme),
+            const _VariantsGuide(),
             _ConnectingGuide(colorScheme: colorScheme),
           ],
         ),
@@ -224,6 +226,82 @@ class _RuleCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Optional rules and play aids, all switchable in Game Setup or Settings.
+class _VariantsGuide extends StatelessWidget {
+  const _VariantsGuide();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: const [
+        _RuleCard(
+          title: 'Undercover',
+          lines: [
+            'Impostors get a similar word from the same theme instead of '
+                'nothing — and are not told they are impostors.',
+            'Everyone believes they hold the real word, so listen for the '
+                'one answer that is slightly off.',
+            'The decoy word is revealed at the end.',
+          ],
+        ),
+        _RuleCard(
+          title: 'Mystery Impostors',
+          lines: [
+            'The impostor count becomes a maximum: each round has anywhere '
+                'from 1 up to that many.',
+            'Nobody knows how many remain — the vote screen only shows how '
+                'many have been caught.',
+          ],
+        ),
+        _RuleCard(
+          title: 'Last Chance',
+          lines: [
+            'When the last impostor is voted out, the impostors get one guess '
+                'at the secret word.',
+            'Guess right and the impostors win after all. The table judges '
+                'the guess.',
+          ],
+        ),
+        _RuleCard(
+          title: 'Hints & Word Difficulty',
+          lines: [
+            'With Hints on, impostors see a clue related to the word.',
+            'After each game, rate how hard the word was; filter by '
+                'difficulty in Game Setup.',
+            'Liked words come up more often, disliked ones less.',
+          ],
+        ),
+        _RuleCard(
+          title: 'Play Aids',
+          lines: [
+            'Hold to Peek: roles show only while you hold the screen.',
+            'Discussion questions (💡 on the vote screen) give the table a '
+                'question to answer about their word.',
+            'The timer can be paused or extended by 30 seconds.',
+            'Shuffle the player list to randomise reveal and speaking order.',
+          ],
+        ),
+        _RuleCard(
+          title: "Tonight's Standings",
+          lines: [
+            'Games since the app was opened count towards tonight\'s scores.',
+            'An impostor win is worth 2 points, an innocent win 1.',
+            'Start a new session from the end screen at any time.',
+          ],
+        ),
+        _RuleCard(
+          title: 'Family Mode',
+          lines: [
+            'Hides mature themes everywhere and never picks them. Turn it on '
+                'in Settings before playing with kids.',
+          ],
+        ),
+      ],
     );
   }
 }

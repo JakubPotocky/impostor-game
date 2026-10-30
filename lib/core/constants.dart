@@ -8,6 +8,9 @@ class AppConstants {
   static const String appName = 'Impostor';
   static const String defaultLanguage = 'en';
 
+  /// Themes hidden, deselected and never picked while Family mode is on.
+  static const Set<String> matureThemes = {'Kinky'};
+
   /// Human-readable labels for supported languages.
   static const Map<String, String> languageLabels = {
     'en': 'English',

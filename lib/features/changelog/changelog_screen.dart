@@ -5,10 +5,36 @@ class ChangelogScreen extends StatelessWidget {
   const ChangelogScreen({super.key});
 
   /// Current app version.
-  static const currentVersion = '2.7.0';
+  static const currentVersion = '2.8.0';
 
   /// Ordered changelog entries (newest first).
   static const List<_ChangelogEntry> _entries = [
+    _ChangelogEntry(
+      version: '2.8.0',
+      date: 'October 30, 2026',
+      title: 'Party Night',
+      changes: [
+        'Undercover mode: impostors get a similar decoy word and don\'t know they\'re impostors.',
+        'Mystery Impostors: anywhere from 1 to your impostor count — nobody knows how many.',
+        'Last Chance: a caught impostor can still win by guessing the word.',
+        'Discussion questions on the vote screen for when the table goes quiet.',
+        'The timer can be paused or extended by 30 seconds, and buzzes when time is nearly up.',
+        'The screen stays awake for the whole round.',
+        'Player avatars: every player gets an emoji — tap it on the Players screen to change it.',
+        'Shuffle the player order, and save player groups to swap whole rosters in one tap.',
+        'Tap a game in history for full details; tap a player for their profile and win rate by role.',
+        "Tonight's Standings: a scoreboard for the current game night on the end screen.",
+        'New badges: Undercover Agent, Last Word and Marathon.',
+        'Three new themes with hints: Places, Music and Nature — and icons for every theme.',
+        'All / None / Surprise me shortcuts for picking themes.',
+        'Family Mode hides mature themes.',
+        'Quick Play on the home screen starts a round with your last players and settings.',
+        'Appearance can now follow your phone\'s light/dark setting.',
+        'Copy a round\'s result to share it in your group chat.',
+        'Screen reader support for the reveal, voting and results screens, and the browser join page.',
+        'Fixed: the game just played was counted twice for streaks and badges.',
+      ],
+    ),
     _ChangelogEntry(
       version: '2.7.0',
       date: 'October 29, 2026',

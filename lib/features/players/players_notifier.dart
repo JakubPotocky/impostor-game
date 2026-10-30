@@ -1,7 +1,10 @@
+import 'dart:math';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:impostor/core/constants.dart';
 import 'package:impostor/core/validators.dart';
 import 'package:impostor/data/player_repository.dart';
+import 'package:impostor/features/players/avatars_notifier.dart';
 import 'package:impostor/features/players/players_state.dart';
 
 /// Riverpod Notifier for the player list.
@@ -54,10 +57,32 @@ class PlayersNotifier extends Notifier<PlayersState> {
         if (i != index) state.players[i],
     ];
     final uniqueName = Validators.makeUnique(trimmed, others);
+    final previousName = state.players[index];
     final updated = List<String>.from(state.players);
     updated[index] = uniqueName;
     state = state.copyWith(players: updated);
     _repo.savePlayers(updated);
+    ref.read(avatarsProvider.notifier).rename(previousName, uniqueName);
+  }
+
+  /// Replaces the whole list (loading a group, undoing a shuffle).
+  /// Blank and duplicate names are dropped.
+  void setPlayers(List<String> players) {
+    final cleaned = <String>[];
+    for (final p in players) {
+      final name = p.trim();
+      if (name.isNotEmpty && !cleaned.contains(name)) cleaned.add(name);
+    }
+    state = state.copyWith(players: cleaned);
+    _repo.savePlayers(cleaned);
+  }
+
+  /// Randomises the order — which is both the reveal order and the speaking
+  /// order. Returns the previous order so the caller can offer an undo.
+  List<String> shuffle([Random? random]) {
+    final previous = state.players;
+    setPlayers(List.of(previous)..shuffle(random));
+    return previous;
   }
 
   /// Removes a player at the given index.

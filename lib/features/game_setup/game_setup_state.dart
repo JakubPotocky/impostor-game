@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:impostor/core/word_difficulty.dart';
 
 enum ThemeVisibilityMode {
@@ -20,11 +21,15 @@ class GameSetupState {
     this.themeVisibilityMode = ThemeVisibilityMode.innocentsOnly,
     this.reducedMotion = false,
     this.suddenDeathEnabled = true,
-    this.darkMode = true,
+    this.themeMode = ThemeMode.system,
     this.allowedDifficulties = allDifficulties,
     this.soundEnabled = true,
     this.hapticsEnabled = true,
     this.holdToReveal = false,
+    this.undercoverMode = false,
+    this.mysteryImpostors = false,
+    this.lastChanceGuess = false,
+    this.familyMode = false,
   });
 
   static const Set<WordDifficulty> allDifficulties = {
@@ -45,7 +50,8 @@ class GameSetupState {
   final ThemeVisibilityMode themeVisibilityMode;
   final bool reducedMotion;
   final bool suddenDeathEnabled;
-  final bool darkMode;
+  /// Light, dark, or follow the phone.
+  final ThemeMode themeMode;
 
   /// Only words rated with one of these difficulties can be picked.
   final Set<WordDifficulty> allowedDifficulties;
@@ -55,6 +61,18 @@ class GameSetupState {
 
   /// Roles are only visible while the player holds a finger on the screen.
   final bool holdToReveal;
+
+  /// Impostors get a decoy word and don't know they are impostors.
+  final bool undercoverMode;
+
+  /// The impostor count is random (1 to [impostorCount]) and kept secret.
+  final bool mysteryImpostors;
+
+  /// A caught impostor may still win by guessing the secret word.
+  final bool lastChanceGuess;
+
+  /// Hide themes with mature content.
+  final bool familyMode;
 
   /// Whether the difficulty filter excludes anything.
   bool get isDifficultyFiltered =>
@@ -72,11 +90,15 @@ class GameSetupState {
     ThemeVisibilityMode? themeVisibilityMode,
     bool? reducedMotion,
     bool? suddenDeathEnabled,
-    bool? darkMode,
+    ThemeMode? themeMode,
     Set<WordDifficulty>? allowedDifficulties,
     bool? soundEnabled,
     bool? hapticsEnabled,
     bool? holdToReveal,
+    bool? undercoverMode,
+    bool? mysteryImpostors,
+    bool? lastChanceGuess,
+    bool? familyMode,
   }) {
     return GameSetupState(
       impostorCount: impostorCount ?? this.impostorCount,
@@ -88,11 +110,15 @@ class GameSetupState {
       themeVisibilityMode: themeVisibilityMode ?? this.themeVisibilityMode,
       reducedMotion: reducedMotion ?? this.reducedMotion,
       suddenDeathEnabled: suddenDeathEnabled ?? this.suddenDeathEnabled,
-      darkMode: darkMode ?? this.darkMode,
+      themeMode: themeMode ?? this.themeMode,
       allowedDifficulties: allowedDifficulties ?? this.allowedDifficulties,
       soundEnabled: soundEnabled ?? this.soundEnabled,
       hapticsEnabled: hapticsEnabled ?? this.hapticsEnabled,
       holdToReveal: holdToReveal ?? this.holdToReveal,
+      undercoverMode: undercoverMode ?? this.undercoverMode,
+      mysteryImpostors: mysteryImpostors ?? this.mysteryImpostors,
+      lastChanceGuess: lastChanceGuess ?? this.lastChanceGuess,
+      familyMode: familyMode ?? this.familyMode,
     );
   }
 
@@ -110,11 +136,15 @@ class GameSetupState {
           themeVisibilityMode == other.themeVisibilityMode &&
           reducedMotion == other.reducedMotion &&
           suddenDeathEnabled == other.suddenDeathEnabled &&
-          darkMode == other.darkMode &&
+          themeMode == other.themeMode &&
           setEquals(allowedDifficulties, other.allowedDifficulties) &&
           soundEnabled == other.soundEnabled &&
           hapticsEnabled == other.hapticsEnabled &&
-          holdToReveal == other.holdToReveal;
+          holdToReveal == other.holdToReveal &&
+          undercoverMode == other.undercoverMode &&
+          mysteryImpostors == other.mysteryImpostors &&
+          lastChanceGuess == other.lastChanceGuess &&
+          familyMode == other.familyMode;
 
   @override
   int get hashCode => Object.hash(
@@ -127,11 +157,13 @@ class GameSetupState {
       themeVisibilityMode,
       reducedMotion,
       suddenDeathEnabled,
-      darkMode,
+      themeMode,
       Object.hashAllUnordered(allowedDifficulties),
       soundEnabled,
       hapticsEnabled,
-      holdToReveal);
+      holdToReveal,
+      Object.hash(
+          undercoverMode, mysteryImpostors, lastChanceGuess, familyMode));
 
   static bool _listEquals(List<String> a, List<String> b) {
     if (a.length != b.length) return false;

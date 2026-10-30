@@ -7,8 +7,10 @@ import 'package:impostor/core/validators.dart';
 import 'package:impostor/core/widgets.dart';
 import 'package:impostor/features/game_setup/game_setup_notifier.dart';
 import 'package:impostor/features/game_setup/game_setup_state.dart';
+import 'package:impostor/features/game_setup/game_variants_card.dart';
 import 'package:impostor/features/game_setup/preset_card.dart';
 import 'package:impostor/features/game_setup/round_factory.dart';
+import 'package:impostor/features/game_setup/theme_selection.dart';
 import 'package:impostor/features/lan_lobby/lan_round_launcher.dart';
 import 'package:impostor/features/lan_lobby/lan_session_notifier.dart';
 import 'package:impostor/features/lan_lobby/lan_session_state.dart';
@@ -88,6 +90,8 @@ class _HostLobbyScreenState extends ConsumerState<HostLobbyScreen> {
                   const SizedBox(height: 16),
                   _GameSettingsCard(session: session),
                   const SizedBox(height: 16),
+                  const GameVariantsCard(),
+                  const SizedBox(height: 16),
                   _BrowserJoinCard(session: session),
                   const SizedBox(height: 16),
                   _DeviceListCard(session: session),
@@ -116,8 +120,7 @@ class _HostLobbyScreenState extends ConsumerState<HostLobbyScreen> {
                   width: double.infinity,
                   height: 56,
                   child: FilledButton.icon(
-                    onPressed:
-                        (_starting || !hasThemes) ? null : _startGame,
+                    onPressed: (_starting || !hasThemes) ? null : _startGame,
                     icon: _starting
                         ? const SizedBox(
                             width: 20,
@@ -151,7 +154,8 @@ class _HostLobbyScreenState extends ConsumerState<HostLobbyScreen> {
 
   void _showCannotStart(String message) {
     setState(() => _starting = false);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _startGame() async {
@@ -289,7 +293,8 @@ class _ThemesCard extends ConsumerWidget {
             const SizedBox(height: 8),
             Text(
               'Pick while you wait for players to join.',
-              style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13),
+              style:
+                  TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13),
             ),
             const SizedBox(height: 12),
             themesAsync.when(
@@ -299,31 +304,36 @@ class _ThemesCard extends ConsumerWidget {
               ),
               error: (e, _) => Text('Error loading themes: $e'),
               data: (themesState) {
-                final names = themesState.themeNames
-                    .where((n) => n != 'Team Pairs')
-                    .toList();
+                final names = selectableThemes(themesState, setup);
                 if (names.isEmpty) {
                   return const Text('No themes available');
                 }
-                return Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: names.map((name) {
-                    final isOn = selected.contains(name);
-                    return FilterChip(
-                      avatar: Icon(themeIcon(name), size: 18),
-                      label: Text(name),
-                      selected: isOn,
-                      onSelected: (_) => ref
-                          .read(gameSetupProvider.notifier)
-                          .toggleTheme(name),
-                      selectedColor: colorScheme.primaryContainer,
-                      checkmarkColor: colorScheme.onPrimaryContainer,
-                      labelStyle: TextStyle(
-                        fontWeight: isOn ? FontWeight.bold : FontWeight.normal,
-                      ),
-                    );
-                  }).toList(),
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ThemeQuickActions(available: names),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: names.map((name) {
+                        final isOn = selected.contains(name);
+                        return FilterChip(
+                          avatar: Icon(themeIcon(name), size: 18),
+                          label: Text(name),
+                          selected: isOn,
+                          onSelected: (_) => ref
+                              .read(gameSetupProvider.notifier)
+                              .toggleTheme(name),
+                          selectedColor: colorScheme.primaryContainer,
+                          checkmarkColor: colorScheme.onPrimaryContainer,
+                          labelStyle: TextStyle(
+                            fontWeight:
+                                isOn ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
                 );
               },
             ),
@@ -375,7 +385,8 @@ class _GameSettingsCard extends ConsumerWidget {
               const SizedBox(width: 8),
               Text(
                 'Round Settings',
-                style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                style: textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.bold),
               ),
             ]),
             const SizedBox(height: 16),
@@ -394,7 +405,8 @@ class _GameSettingsCard extends ConsumerWidget {
                   onSelected: (_) => notifier.setLanguage(entry.key),
                   selectedColor: colorScheme.primaryContainer,
                   labelStyle: TextStyle(
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontWeight:
+                        isSelected ? FontWeight.bold : FontWeight.normal,
                   ),
                 );
               }).toList(),
@@ -411,7 +423,8 @@ class _GameSettingsCard extends ConsumerWidget {
                     CircleButton(
                       icon: Icons.remove,
                       onPressed: setup.impostorCount > 1
-                          ? () => notifier.setImpostorCount(setup.impostorCount - 1)
+                          ? () =>
+                              notifier.setImpostorCount(setup.impostorCount - 1)
                           : null,
                     ),
                     Padding(
@@ -428,7 +441,8 @@ class _GameSettingsCard extends ConsumerWidget {
                       icon: Icons.add,
                       onPressed: playerCount > 0 &&
                               setup.impostorCount < playerCount - 1
-                          ? () => notifier.setImpostorCount(setup.impostorCount + 1)
+                          ? () =>
+                              notifier.setImpostorCount(setup.impostorCount + 1)
                           : null,
                     ),
                   ],
@@ -520,7 +534,8 @@ class _GameSettingsCard extends ConsumerWidget {
             const SizedBox(height: 4),
             Text(
               'Show theme while revealing words',
-              style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12),
+              style:
+                  TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12),
             ),
             const SizedBox(height: 10),
             SegmentedButton<ThemeVisibilityMode>(
@@ -623,7 +638,8 @@ class _BrowserJoinCard extends StatelessWidget {
               Text(
                 'No app needed — scan the code or open this link on the '
                 'same Wi-Fi to join and pick a player.',
-                style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13),
+                style: TextStyle(
+                    color: colorScheme.onSurfaceVariant, fontSize: 13),
               ),
               const SizedBox(height: 16),
               Center(
@@ -831,13 +847,13 @@ class _PlayerListCardState extends ConsumerState<_PlayerListCard> {
     if (!Validators.hasEnoughPlayers(remaining,
         minimum: AppConstants.minPlayers)) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content:
-            Text('Need at least ${AppConstants.minPlayers} players.'),
+        content: Text('Need at least ${AppConstants.minPlayers} players.'),
       ));
       return;
     }
-    ref.read(lanSessionProvider.notifier).updatePlayers(
-        widget.session.players.where((p) => p != name).toList());
+    ref
+        .read(lanSessionProvider.notifier)
+        .updatePlayers(widget.session.players.where((p) => p != name).toList());
   }
 
   @override
@@ -869,7 +885,8 @@ class _PlayerListCardState extends ConsumerState<_PlayerListCard> {
             const SizedBox(height: 4),
             Text(
               'You can add or remove players between rounds.',
-              style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13),
+              style:
+                  TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13),
             ),
             const SizedBox(height: 12),
             Wrap(

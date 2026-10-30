@@ -5,6 +5,8 @@ import 'package:impostor/core/streaks.dart';
 import 'package:impostor/core/validators.dart';
 import 'package:impostor/core/widgets.dart';
 import 'package:impostor/data/game_history_repository.dart';
+import 'package:impostor/features/players/groups_sheet.dart';
+import 'package:impostor/features/players/player_avatar_widget.dart';
 import 'package:impostor/features/players/players_notifier.dart';
 import 'package:impostor/features/lan_lobby/screens/host_lobby_screen.dart';
 import 'package:impostor/features/pre_game/pre_game_screen.dart';
@@ -41,6 +43,21 @@ class _PlayersScreenState extends ConsumerState<PlayersScreen> {
     super.dispose();
   }
 
+  void _shuffle() {
+    final previous = ref.read(playersProvider.notifier).shuffle();
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: const Text('Order shuffled — this is the new reveal and '
+            'speaking order'),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () =>
+              ref.read(playersProvider.notifier).setPlayers(previous),
+        ),
+      ));
+  }
+
   void _addPlayer() {
     ref.read(playersProvider.notifier).addPlayer(_nameController.text);
     _nameController.clear();
@@ -59,6 +76,16 @@ class _PlayersScreenState extends ConsumerState<PlayersScreen> {
       appBar: AppBar(
         title: const Text('Players'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.shuffle_rounded),
+            tooltip: 'Shuffle order',
+            onPressed: players.length > 1 ? _shuffle : null,
+          ),
+          IconButton(
+            icon: const Icon(Icons.groups_rounded),
+            tooltip: 'Player groups',
+            onPressed: () => showGroupsSheet(context),
+          ),
           Container(
             margin: const EdgeInsets.only(right: 16),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -216,6 +243,8 @@ class _PlayersScreenState extends ConsumerState<PlayersScreen> {
                               .removePlayer(index);
                         },
                         streak: streaks[players[index]]?.current ?? 0,
+                        onAvatarTap: () =>
+                            showAvatarPicker(context, ref, players[index]),
                       );
                     },
                   ),
@@ -294,6 +323,7 @@ class _PlayerTile extends StatefulWidget {
     required this.streak,
     required this.onEdit,
     required this.onDelete,
+    required this.onAvatarTap,
   });
 
   final int index;
@@ -301,6 +331,7 @@ class _PlayerTile extends StatefulWidget {
   final int streak;
   final ValueChanged<String> onEdit;
   final VoidCallback onDelete;
+  final VoidCallback onAvatarTap;
 
   @override
   State<_PlayerTile> createState() => _PlayerTileState();
@@ -359,13 +390,18 @@ class _PlayerTileState extends State<_PlayerTile>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: ListTile(
           contentPadding: const EdgeInsets.only(left: 8, right: 4),
-          leading: CircleAvatar(
-            backgroundColor: colorScheme.primaryContainer,
-            child: Text(
-              '${widget.index + 1}',
-              style: TextStyle(
-                color: colorScheme.onPrimaryContainer,
-                fontWeight: FontWeight.bold,
+          leading: Semantics(
+            button: true,
+            label: 'Change avatar for ${widget.name}',
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: widget.onAvatarTap,
+              child: Badge(
+                label: Text('${widget.index + 1}'),
+                backgroundColor: colorScheme.primary,
+                textColor: colorScheme.onPrimary,
+                offset: const Offset(4, -2),
+                child: PlayerAvatar(name: widget.name),
               ),
             ),
           ),

@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:impostor/core/constants.dart';
 import 'package:impostor/core/widgets.dart';
 import 'package:impostor/features/achievements/achievements_screen.dart';
+import 'package:impostor/features/game_setup/game_setup_notifier.dart';
+import 'package:impostor/features/game_setup/start_round.dart';
 import 'package:impostor/features/lan_lobby/screens/lobby_mode_screen.dart';
+import 'package:impostor/features/players/players_notifier.dart';
 import 'package:impostor/features/players/players_screen.dart';
 import 'package:impostor/features/changelog/changelog_screen.dart';
 import 'package:impostor/features/rules/rules_screen.dart';
@@ -19,6 +22,10 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final players = ref.watch(playersProvider).players;
+    final hasThemes = ref.watch(gameSetupProvider.select((s) => s.hasThemes));
+    // One tap from Home when the last game's players and setup still apply.
+    final canQuickPlay = players.length >= AppConstants.minPlayers && hasThemes;
 
     Future<void> openModePicker() async {
       await showModalBottomSheet<void>(
@@ -196,6 +203,29 @@ class HomeScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
+
+                  // --- Quick play: same players & settings, straight in ---
+                  if (canQuickPlay) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: FilledButton.tonalIcon(
+                        onPressed: () =>
+                            startLocalRound(context, ref, players: players),
+                        icon: const Icon(Icons.bolt_rounded),
+                        label: Text(
+                          'Quick Play · ${players.length} players',
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                        style: FilledButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
 
                   // --- LAN Multiplayer ---
                   StaggeredFadeIn(

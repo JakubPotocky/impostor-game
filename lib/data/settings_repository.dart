@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:hive/hive.dart';
 import 'package:impostor/core/word_difficulty.dart';
 
@@ -14,12 +15,18 @@ class SettingsRepository {
   static const String _keyThemeVisibilityMode = 'themeVisibilityMode';
   static const String _keyReducedMotion = 'reducedMotion';
   static const String _keySuddenDeathEnabled = 'suddenDeathEnabled';
+  /// Legacy bool from before [ThemeMode] support; read once for migration.
   static const String _keyDarkMode = 'darkMode';
   static const String _keyLastSeenVersion = 'lastSeenVersion';
   static const String _keyAllowedDifficulties = 'allowedDifficulties';
   static const String _keySoundEnabled = 'soundEnabled';
   static const String _keyHapticsEnabled = 'hapticsEnabled';
   static const String _keyHoldToReveal = 'holdToReveal';
+  static const String _keyThemeMode = 'themeMode';
+  static const String _keyUndercoverMode = 'undercoverMode';
+  static const String _keyMysteryImpostors = 'mysteryImpostors';
+  static const String _keyLastChanceGuess = 'lastChanceGuess';
+  static const String _keyFamilyMode = 'familyMode';
 
   Box<dynamic>? _box;
 
@@ -119,14 +126,6 @@ class SettingsRepository {
     await _safeBox.put(_keySuddenDeathEnabled, enabled);
   }
 
-  bool getDarkMode({bool defaultValue = true}) {
-    return _safeBox.get(_keyDarkMode, defaultValue: defaultValue) as bool;
-  }
-
-  Future<void> saveDarkMode(bool dark) async {
-    await _safeBox.put(_keyDarkMode, dark);
-  }
-
   String getLastSeenVersion({String defaultValue = '0.0.0'}) {
     return _safeBox.get(_keyLastSeenVersion, defaultValue: defaultValue)
         as String;
@@ -134,6 +133,51 @@ class SettingsRepository {
 
   Future<void> saveLastSeenVersion(String version) async {
     await _safeBox.put(_keyLastSeenVersion, version);
+  }
+
+  /// Light/dark/system appearance. Installs from before this setting existed
+  /// keep their explicit choice from the old dark-mode switch.
+  ThemeMode getThemeMode() {
+    final stored = _safeBox.get(_keyThemeMode) as String?;
+    if (stored != null) {
+      return ThemeMode.values.firstWhere((m) => m.name == stored,
+          orElse: () => ThemeMode.system);
+    }
+    final legacyDark = _safeBox.get(_keyDarkMode) as bool?;
+    if (legacyDark == null) return ThemeMode.system;
+    return legacyDark ? ThemeMode.dark : ThemeMode.light;
+  }
+
+  Future<void> saveThemeMode(ThemeMode mode) async {
+    await _safeBox.put(_keyThemeMode, mode.name);
+  }
+
+  bool getUndercoverMode() =>
+      _safeBox.get(_keyUndercoverMode, defaultValue: false) as bool;
+
+  Future<void> saveUndercoverMode(bool enabled) async {
+    await _safeBox.put(_keyUndercoverMode, enabled);
+  }
+
+  bool getMysteryImpostors() =>
+      _safeBox.get(_keyMysteryImpostors, defaultValue: false) as bool;
+
+  Future<void> saveMysteryImpostors(bool enabled) async {
+    await _safeBox.put(_keyMysteryImpostors, enabled);
+  }
+
+  bool getLastChanceGuess() =>
+      _safeBox.get(_keyLastChanceGuess, defaultValue: false) as bool;
+
+  Future<void> saveLastChanceGuess(bool enabled) async {
+    await _safeBox.put(_keyLastChanceGuess, enabled);
+  }
+
+  bool getFamilyMode() =>
+      _safeBox.get(_keyFamilyMode, defaultValue: false) as bool;
+
+  Future<void> saveFamilyMode(bool enabled) async {
+    await _safeBox.put(_keyFamilyMode, enabled);
   }
 
   bool getSoundEnabled() =>

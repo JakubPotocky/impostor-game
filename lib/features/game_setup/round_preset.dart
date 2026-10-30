@@ -20,6 +20,9 @@ class RoundPreset {
     required this.themeVisibilityMode,
     required this.suddenDeathEnabled,
     required this.allowedDifficulties,
+    this.undercoverMode = false,
+    this.mysteryImpostors = false,
+    this.lastChanceGuess = false,
   });
 
   factory RoundPreset.fromState(String name, GameSetupState state) {
@@ -34,6 +37,9 @@ class RoundPreset {
       themeVisibilityMode: state.themeVisibilityMode,
       suddenDeathEnabled: state.suddenDeathEnabled,
       allowedDifficulties: Set.unmodifiable(state.allowedDifficulties),
+      undercoverMode: state.undercoverMode,
+      mysteryImpostors: state.mysteryImpostors,
+      lastChanceGuess: state.lastChanceGuess,
     );
   }
 
@@ -64,6 +70,9 @@ class RoundPreset {
       allowedDifficulties: (difficulties == null || difficulties.isEmpty)
           ? defaults.allowedDifficulties
           : difficulties,
+      undercoverMode: json['undercoverMode'] as bool? ?? false,
+      mysteryImpostors: json['mysteryImpostors'] as bool? ?? false,
+      lastChanceGuess: json['lastChanceGuess'] as bool? ?? false,
     );
   }
 
@@ -77,6 +86,9 @@ class RoundPreset {
   final ThemeVisibilityMode themeVisibilityMode;
   final bool suddenDeathEnabled;
   final Set<WordDifficulty> allowedDifficulties;
+  final bool undercoverMode;
+  final bool mysteryImpostors;
+  final bool lastChanceGuess;
 
   /// [state] with this preset's round settings applied.
   GameSetupState applyTo(GameSetupState state) {
@@ -90,6 +102,9 @@ class RoundPreset {
       themeVisibilityMode: themeVisibilityMode,
       suddenDeathEnabled: suddenDeathEnabled,
       allowedDifficulties: allowedDifficulties,
+      undercoverMode: undercoverMode,
+      mysteryImpostors: mysteryImpostors,
+      lastChanceGuess: lastChanceGuess,
     );
   }
 
@@ -108,5 +123,8 @@ class RoundPreset {
         'suddenDeathEnabled': suddenDeathEnabled,
         'allowedDifficulties':
             allowedDifficulties.map((d) => d.name).toList(),
+        'undercoverMode': undercoverMode,
+        'mysteryImpostors': mysteryImpostors,
+        'lastChanceGuess': lastChanceGuess,
       };
 }

@@ -23,6 +23,14 @@ class MainActivity : FlutterActivity() {
                         window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
                         result.success(null)
                     }
+                    "keepScreenOn" -> {
+                        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        result.success(null)
+                    }
+                    "allowScreenOff" -> {
+                        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        result.success(null)
+                    }
                     else -> result.notImplemented()
                 }
             }

@@ -3,14 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:impostor/core/constants.dart';
 import 'package:impostor/data/achievement_repository.dart';
+import 'package:impostor/data/avatar_repository.dart';
 import 'package:impostor/data/backup_service.dart';
 import 'package:impostor/data/custom_theme_repository.dart';
 import 'package:impostor/data/game_history_repository.dart';
 import 'package:impostor/data/player_repository.dart';
 import 'package:impostor/data/preset_repository.dart';
+import 'package:impostor/data/roster_repository.dart';
 import 'package:impostor/data/settings_repository.dart';
 import 'package:impostor/data/word_difficulty_repository.dart';
 import 'package:impostor/data/word_vote_repository.dart';
+import 'package:impostor/features/end/session_notifier.dart';
 import 'package:impostor/features/game_setup/game_setup_notifier.dart';
 import 'package:impostor/features/home/home_screen.dart';
 import 'package:impostor/features/onboarding/onboarding_screen.dart';
@@ -19,6 +22,8 @@ import 'package:impostor/features/themes/themes_notifier.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // "Tonight's standings" count games played since the app was opened.
+  final appStart = DateTime.now();
 
   // Initialise Hive.
   await Hive.initFlutter();
@@ -48,6 +53,12 @@ Future<void> main() async {
   final presetRepo = PresetRepository();
   await presetRepo.init();
 
+  final avatarRepo = AvatarRepository();
+  await avatarRepo.init();
+
+  final rosterRepo = RosterRepository();
+  await rosterRepo.init();
+
   // Section names are part of the backup format — never rename them.
   final backupService = BackupService({
     'players': playerRepo.backupBox,
@@ -58,6 +69,8 @@ Future<void> main() async {
     'achievements': achievementRepo.backupBox,
     'wordDifficulty': wordDifficultyRepo.backupBox,
     'presets': presetRepo.backupBox,
+    'avatars': avatarRepo.backupBox,
+    'playerGroups': rosterRepo.backupBox,
   });
 
   final hasSeenTutorial = settingsRepo.getHasSeenTutorial();
@@ -74,6 +87,9 @@ Future<void> main() async {
         wordDifficultyRepositoryProvider.overrideWithValue(wordDifficultyRepo),
         presetRepositoryProvider.overrideWithValue(presetRepo),
         backupServiceProvider.overrideWithValue(backupService),
+        avatarRepositoryProvider.overrideWithValue(avatarRepo),
+        rosterRepositoryProvider.overrideWithValue(rosterRepo),
+        sessionProvider.overrideWith(() => SessionNotifier(appStart)),
       ],
       child: ImpostorApp(showOnboarding: !hasSeenTutorial),
     ),
@@ -87,8 +103,8 @@ class ImpostorApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isDark = ref.watch(
-      gameSetupProvider.select((s) => s.darkMode),
+    final themeMode = ref.watch(
+      gameSetupProvider.select((s) => s.themeMode),
     );
     return MaterialApp(
       title: AppConstants.appName,
@@ -107,7 +123,7 @@ class ImpostorApp extends ConsumerWidget {
         ),
         useMaterial3: true,
       ),
-      themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
+      themeMode: themeMode,
       home: showOnboarding ? _OnboardingWrapper() : const HomeScreen(),
     );
   }

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:impostor/core/screen_awake.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:impostor/core/reveal_palette.dart';
 import 'package:impostor/core/role_assignment_service.dart';
@@ -35,6 +36,7 @@ class _DistributedRevealScreenState
   @override
   void initState() {
     super.initState();
+    ScreenAwake.acquire();
     _parsePayload();
     _listenForAllComplete();
   }
@@ -74,6 +76,7 @@ class _DistributedRevealScreenState
   @override
   void dispose() {
     _allRevealsSub?.cancel();
+    ScreenAwake.release();
     super.dispose();
   }
 
@@ -303,65 +306,70 @@ class _RevealCard extends StatelessWidget {
         RevealPalette.accent.withAlpha(45), colorScheme.surfaceContainerHigh);
     final foreground = colorScheme.onSurface;
 
-    return Card(
-      elevation: 4,
-      color: background,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isImp ? Icons.warning_amber_rounded : Icons.check_circle_rounded,
-              size: 64,
-              color: RevealPalette.accent,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              isImp ? 'You are the IMPOSTOR' : word,
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: foreground,
-                  ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              isImp
-                  ? 'Blend in. Don\'t get caught!'
-                  : 'This is the secret word.',
-              style: TextStyle(
-                color: foreground.withAlpha(180),
+    return Semantics(
+      liveRegion: true,
+      child: Card(
+        elevation: 4,
+        color: background,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isImp
+                    ? Icons.warning_amber_rounded
+                    : Icons.check_circle_rounded,
+                size: 64,
+                color: RevealPalette.accent,
               ),
-              textAlign: TextAlign.center,
-            ),
-            if (_showTheme && themeName.trim().isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Text(
+                isImp ? 'You are the IMPOSTOR' : word,
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: foreground,
+                    ),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 8),
               Text(
-                'Theme: ${themeName.trim()}',
+                isImp
+                    ? 'Blend in. Don\'t get caught!'
+                    : 'This is the secret word.',
                 style: TextStyle(
-                  color: foreground.withAlpha(165),
-                  fontSize: 13,
+                  color: foreground.withAlpha(180),
                 ),
                 textAlign: TextAlign.center,
               ),
-            ],
-            if (isImp &&
-                hintsEnabled &&
-                (impostorHintWord ?? '').trim().isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text(
-                'Hint: ${impostorHintWord!.trim()}',
-                style: TextStyle(
-                  color: foreground.withAlpha(180),
-                  fontStyle: FontStyle.italic,
-                  fontSize: 13,
+              if (_showTheme && themeName.trim().isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Theme: ${themeName.trim()}',
+                  style: TextStyle(
+                    color: foreground.withAlpha(165),
+                    fontSize: 13,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-              ),
+              ],
+              if (isImp &&
+                  hintsEnabled &&
+                  (impostorHintWord ?? '').trim().isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'Hint: ${impostorHintWord!.trim()}',
+                  style: TextStyle(
+                    color: foreground.withAlpha(180),
+                    fontStyle: FontStyle.italic,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

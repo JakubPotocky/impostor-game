@@ -24,8 +24,10 @@ LanRoundLaunch launchLanRound(WidgetRef ref, GameRound round) {
   final setup = ref.read(gameSetupProvider);
   final lanNotifier = ref.read(lanSessionProvider.notifier);
 
+  // Devices only display roles, so they get what each player should see
+  // (decoys instead of impostor roles in Undercover rounds).
   final hostBucket = lanNotifier.distributeAssignments(
-    allAssignments: round.assignments
+    allAssignments: round.revealAssignments
         .map((a) => {
               'playerName': a.playerName,
               'isImpostor': a.isImpostor,

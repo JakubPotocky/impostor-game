@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:impostor/core/word_difficulty.dart';
 import 'package:impostor/core/word_picker_service.dart';
@@ -102,7 +103,7 @@ void main() {
       themeVisibilityMode: ThemeVisibilityMode.everyone,
       suddenDeathEnabled: false,
       allowedDifficulties: {WordDifficulty.easy, WordDifficulty.medium},
-      darkMode: false,
+      themeMode: ThemeMode.light,
     );
 
     test('round-trips through JSON and matches its source state', () {
@@ -114,10 +115,11 @@ void main() {
 
     test('applying keeps device preferences untouched', () {
       final preset = RoundPreset.fromState('Friday', state);
-      const other = GameSetupState(darkMode: true, holdToReveal: true);
+      const other =
+          GameSetupState(themeMode: ThemeMode.dark, holdToReveal: true);
       final applied = preset.applyTo(other);
       expect(preset.matches(applied), isTrue);
-      expect(applied.darkMode, isTrue);
+      expect(applied.themeMode, ThemeMode.dark);
       expect(applied.holdToReveal, isTrue);
     });
 

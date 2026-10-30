@@ -6,10 +6,11 @@ import 'package:impostor/core/widgets.dart';
 import 'package:impostor/features/game_setup/difficulty_filter_card.dart';
 import 'package:impostor/features/game_setup/game_setup_notifier.dart';
 import 'package:impostor/features/game_setup/game_setup_state.dart';
+import 'package:impostor/features/game_setup/game_variants_card.dart';
 import 'package:impostor/features/game_setup/preset_card.dart';
-import 'package:impostor/features/game_setup/round_factory.dart';
+import 'package:impostor/features/game_setup/start_round.dart';
+import 'package:impostor/features/game_setup/theme_selection.dart';
 import 'package:impostor/features/players/players_notifier.dart';
-import 'package:impostor/features/role_reveal/role_reveal_screen.dart';
 import 'package:impostor/features/themes/themes_notifier.dart';
 
 /// Pre-game review screen: shows players summary, impostor count, and start.
@@ -200,34 +201,40 @@ class PreGameScreen extends ConsumerWidget {
                         const Center(child: CircularProgressIndicator()),
                     error: (e, _) => Text('Error: $e'),
                     data: (themesState) {
-                      final themeNames = themesState.themeNames
-                          .where((name) => name != 'Team Pairs')
-                          .toList();
+                      final themeNames =
+                          selectableThemes(themesState, setupState);
                       if (themeNames.isEmpty) {
                         return const Text('No themes available');
                       }
-                      return Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: themeNames.map((name) {
-                          final isOn = selectedThemes.contains(name);
-                          return FilterChip(
-                            avatar: Icon(themeIcon(name), size: 18),
-                            label: Text(name),
-                            selected: isOn,
-                            onSelected: (_) {
-                              ref
-                                  .read(gameSetupProvider.notifier)
-                                  .toggleTheme(name);
-                            },
-                            selectedColor: colorScheme.primaryContainer,
-                            checkmarkColor: colorScheme.onPrimaryContainer,
-                            labelStyle: TextStyle(
-                              fontWeight:
-                                  isOn ? FontWeight.bold : FontWeight.normal,
-                            ),
-                          );
-                        }).toList(),
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ThemeQuickActions(available: themeNames),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: themeNames.map((name) {
+                              final isOn = selectedThemes.contains(name);
+                              return FilterChip(
+                                avatar: Icon(themeIcon(name), size: 18),
+                                label: Text(name),
+                                selected: isOn,
+                                onSelected: (_) {
+                                  ref
+                                      .read(gameSetupProvider.notifier)
+                                      .toggleTheme(name);
+                                },
+                                selectedColor: colorScheme.primaryContainer,
+                                checkmarkColor: colorScheme.onPrimaryContainer,
+                                labelStyle: TextStyle(
+                                  fontWeight: isOn
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ],
                       );
                     },
                   ),
@@ -250,6 +257,13 @@ class PreGameScreen extends ConsumerWidget {
           const StaggeredFadeIn(
             delay: 2,
             child: DifficultyFilterCard(),
+          ),
+          const SizedBox(height: 16),
+
+          // --- Game variants ---
+          const StaggeredFadeIn(
+            delay: 2,
+            child: GameVariantsCard(),
           ),
           const SizedBox(height: 16),
 
@@ -566,33 +580,6 @@ class PreGameScreen extends ConsumerWidget {
   }
 
   void _startGame(BuildContext context, WidgetRef ref) {
-    final result =
-        createRound(ref, players: ref.read(playersProvider).players);
-    switch (result) {
-      case RoundUnavailable(:final reason):
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(reason)));
-      case RoundReady(:final round):
-        final setup = ref.read(gameSetupProvider);
-        Navigator.of(context).push(
-          createSlideRoute(
-            RoleRevealScreen(
-              assignments: round.assignments,
-              word: round.word,
-              themeName: round.themeName,
-              hintsEnabled: setup.hintsEnabled,
-              themeVisibilityMode: setup.themeVisibilityMode,
-              impostorHintWord: round.impostorHint,
-              timerSeconds: setup.timerEnabled ? setup.timerMinutes * 60 : 0,
-              isBlankRound: round.isBlankRound,
-              reducedMotion: setup.reducedMotion,
-              suddenDeathEnabled: setup.suddenDeathEnabled,
-              startingPlayerName: round.startingPlayerName,
-              wordKey: round.wordKey,
-              holdToReveal: setup.holdToReveal,
-            ),
-          ),
-        );
-    }
+    startLocalRound(context, ref, players: ref.read(playersProvider).players);
   }
 }

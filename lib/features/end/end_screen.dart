@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:impostor/core/achievements.dart';
 import 'package:impostor/core/animated_effects.dart';
@@ -13,15 +14,17 @@ import 'package:impostor/core/word_difficulty.dart';
 import 'package:impostor/data/achievement_repository.dart';
 import 'package:impostor/data/game_history_repository.dart';
 import 'package:impostor/data/word_vote_repository.dart';
+import 'package:impostor/features/end/session_notifier.dart';
 import 'package:impostor/features/game_setup/game_setup_notifier.dart';
 import 'package:impostor/features/game_setup/round_factory.dart';
+import 'package:impostor/features/game_setup/start_round.dart';
 import 'package:impostor/features/lan_lobby/lan_round_launcher.dart';
 import 'package:impostor/features/lan_lobby/lan_session_notifier.dart';
 import 'package:impostor/features/lan_lobby/lan_session_state.dart';
 import 'package:impostor/features/lan_lobby/screens/host_lobby_screen.dart';
+import 'package:impostor/features/players/player_avatar_widget.dart';
 import 'package:impostor/features/players/players_notifier.dart';
 import 'package:impostor/features/players/players_screen.dart';
-import 'package:impostor/features/role_reveal/role_reveal_screen.dart';
 import 'package:impostor/features/themes/word_difficulty_notifier.dart';
 import 'package:impostor/features/voting/voting_screen.dart' show GameResult;
 
@@ -66,6 +69,7 @@ class _EndScreenState extends ConsumerState<EndScreen>
   bool _historySaved = false;
   String? _hotStreakMessage;
   List<_PlayerAchievement> _newlyUnlockedAchievements = [];
+  List<SessionStanding> _standings = const [];
   late AnimationController _ctrl;
   late Animation<double> _fadeIn;
   late Animation<double> _slideUp;
@@ -97,11 +101,10 @@ class _EndScreenState extends ConsumerState<EndScreen>
     _historySaved = true;
     final repo = ref.read(gameHistoryRepositoryProvider);
     final winners = _winnerNames();
-    final isBlankRound = widget.result == GameResult.blankRound;
-    repo.addGame(GameRecord(
+    final record = GameRecord(
       timestamp: DateTime.now(),
       word: widget.word,
-      mode: 'normal',
+      mode: _decoyWord != null ? 'undercover' : 'normal',
       impostorsWon: widget.result == GameResult.impostorsWin,
       players: widget.assignments.map((a) => a.playerName).toList(),
       impostorNames: widget.assignments
@@ -112,32 +115,21 @@ class _EndScreenState extends ConsumerState<EndScreen>
       killedNames: widget.killedIndices
           .map((i) => widget.assignments[i].playerName)
           .toList(),
-      isBlankRound: isBlankRound,
+      isBlankRound: widget.result == GameResult.blankRound,
       endReason: widget.endReason,
       startingPlayerName: widget.startingPlayerName,
-    ));
+    );
 
-    final updated = [
-      GameRecord(
-        timestamp: DateTime.now(),
-        word: widget.word,
-        mode: 'normal',
-        impostorsWon: widget.result == GameResult.impostorsWin,
-        players: widget.assignments.map((a) => a.playerName).toList(),
-        impostorNames: widget.assignments
-            .where((a) => a.isImpostor)
-            .map((a) => a.playerName)
-            .toList(),
-        winnerNames: winners,
-        killedNames: widget.killedIndices
-            .map((i) => widget.assignments[i].playerName)
-            .toList(),
-        isBlankRound: isBlankRound,
-        endReason: widget.endReason,
-        startingPlayerName: widget.startingPlayerName,
-      ),
-      ...repo.getGames(),
-    ];
+    // Read history *before* adding: Hive updates its in-memory copy as soon
+    // as put() is called, so reading afterwards would count this game twice.
+    final updated = [record, ...repo.getGames()];
+    repo.addGame(record);
+
+    final standings = SessionScoring.standings(
+      updated,
+      since: ref.read(sessionProvider),
+    );
+
     final streaks = computePlayerStreaks(updated);
     final hot = winners
         .where((name) => (streaks[name]?.current ?? 0) >= 2)
@@ -167,13 +159,80 @@ class _EndScreenState extends ConsumerState<EndScreen>
         _hotStreakMessage = 'Hot streak! $best is on 🔥 $value';
       }
       _newlyUnlockedAchievements = newlyUnlocked;
+      _standings = standings;
     });
+  }
+
+  /// Undercover rounds: the decoy impostors were given.
+  String? get _decoyWord {
+    for (final a in widget.assignments) {
+      if (a.decoyWord != null) return a.decoyWord;
+    }
+    return null;
+  }
+
+  /// Plain-text summary for pasting into a group chat.
+  String _resultSummary() {
+    final headline = switch (widget.result) {
+      GameResult.blankRound => 'Blank round — everyone was the impostor!',
+      GameResult.impostorsWin => 'Impostors win!',
+      GameResult.innocentsWin => 'Innocents win!',
+    };
+    final impostors = widget.assignments
+        .where((a) => a.isImpostor)
+        .map((a) => a.playerName)
+        .join(', ');
+    final eliminated =
+        widget.killedIndices.map((i) => widget.assignments[i].playerName);
+    return [
+      '🕵️ Impostor — $headline',
+      'Secret word: ${widget.word}',
+      if (_decoyWord case final decoy?) 'Decoy word: $decoy',
+      if (widget.result != GameResult.blankRound) 'Impostors: $impostors',
+      if (eliminated.isNotEmpty) 'Voted out: ${eliminated.join(' → ')}',
+      if (widget.startingPlayerName case final starter?)
+        'First to speak: $starter',
+    ].join('\n');
+  }
+
+  Future<void> _copyResult() async {
+    await Clipboard.setData(ClipboardData(text: _resultSummary()));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+          const SnackBar(content: Text('Result copied — paste it anywhere')));
+  }
+
+  Future<void> _startNewSession() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('New Session?'),
+        content: const Text('Tonight\'s standings start again from zero. '
+            'Game history and stats are kept.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Start New'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    ref.read(sessionProvider.notifier).startNew();
+    setState(() => _standings = const []);
   }
 
   /// The impostors' hint, shown only if impostors actually saw one.
   String? get _revealedHint {
     final hint = widget.impostorHintWord?.trim();
-    if (hint == null || hint.isEmpty) return null;
+    // Undercover impostors never saw a hint — they thought they had the word.
+    if (hint == null || hint.isEmpty || _decoyWord != null) return null;
     final hintsEnabled =
         ref.watch(gameSetupProvider.select((s) => s.hintsEnabled));
     return hintsEnabled ? hint : null;
@@ -226,30 +285,12 @@ class _EndScreenState extends ConsumerState<EndScreen>
         round = result.round;
     }
 
-    final Widget nextScreen;
-    if (isLanHosting) {
-      // Redistributes the new round through the still-live LAN session
-      // instead of abandoning it. Connected devices keep the player identity
-      // they already picked, so guests just see a fresh reveal.
-      nextScreen = launchLanRound(ref, round).hostScreen;
-    } else {
-      final setup = ref.read(gameSetupProvider);
-      nextScreen = RoleRevealScreen(
-        assignments: round.assignments,
-        word: round.word,
-        themeName: round.themeName,
-        hintsEnabled: setup.hintsEnabled,
-        themeVisibilityMode: setup.themeVisibilityMode,
-        impostorHintWord: round.impostorHint,
-        timerSeconds: setup.timerEnabled ? setup.timerMinutes * 60 : 0,
-        isBlankRound: round.isBlankRound,
-        reducedMotion: setup.reducedMotion,
-        suddenDeathEnabled: setup.suddenDeathEnabled,
-        startingPlayerName: round.startingPlayerName,
-        wordKey: round.wordKey,
-        holdToReveal: setup.holdToReveal,
-      );
-    }
+    final Widget nextScreen = isLanHosting
+        // Redistributes the new round through the still-live LAN session
+        // instead of abandoning it. Connected devices keep the player
+        // identity they already picked, so guests just see a fresh reveal.
+        ? launchLanRound(ref, round).hostScreen
+        : localRevealScreen(ref.read(gameSetupProvider), round);
 
     // Replace the entire game stack with the new round. When LAN-hosting,
     // the session lives in lanSessionProvider, not on the nav stack, so it
@@ -385,7 +426,10 @@ class _EndScreenState extends ConsumerState<EndScreen>
                         const SizedBox(height: 24),
 
                         // Winner text
-                        widget.reducedMotion
+                        Semantics(
+                          header: true,
+                          liveRegion: true,
+                          child: widget.reducedMotion
                             ? Text(
                                 isBlankRound
                                     ? 'Blank Round!'
@@ -416,6 +460,7 @@ class _EndScreenState extends ConsumerState<EndScreen>
                                       color: resultColor,
                                     ),
                               ),
+                        ),
                         const SizedBox(height: 8),
                         if (_hotStreakMessage != null) ...[
                           Text(
@@ -482,6 +527,24 @@ class _EndScreenState extends ConsumerState<EndScreen>
                                     ),
                                 textAlign: TextAlign.center,
                               ),
+                              if (_decoyWord case final decoy?) ...[
+                                const SizedBox(height: 6),
+                                Text.rich(
+                                  TextSpan(children: [
+                                    const TextSpan(text: "Impostors' decoy: "),
+                                    TextSpan(
+                                      text: decoy,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w700),
+                                    ),
+                                  ]),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: colorScheme.onSurface.withAlpha(160),
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
                               if (_revealedHint case final hint?) ...[
                                 const SizedBox(height: 6),
                                 Text.rich(
@@ -530,7 +593,13 @@ class _EndScreenState extends ConsumerState<EndScreen>
                           const SizedBox(height: 12),
                           _DifficultyRatingRow(wordKey: wordKey),
                         ],
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 8),
+                        TextButton.icon(
+                          onPressed: _copyResult,
+                          icon: const Icon(Icons.copy_rounded, size: 18),
+                          label: const Text('Copy result'),
+                        ),
+                        const SizedBox(height: 16),
 
                         // Impostors / All Players section
                         _RoleSection(
@@ -555,6 +624,13 @@ class _EndScreenState extends ConsumerState<EndScreen>
                             players: innocents,
                             killedIndices: widget.killedIndices,
                             assignments: widget.assignments,
+                          ),
+                        ],
+                        if (_standings.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          _SessionStandingsCard(
+                            standings: _standings,
+                            onNewSession: _startNewSession,
                           ),
                         ],
                         const SizedBox(height: 40),
@@ -707,6 +783,8 @@ class _RoleSection extends StatelessWidget {
                     color:
                         wasKilled ? colorScheme.error : Colors.green.shade400,
                   ),
+                  const SizedBox(width: 8),
+                  PlayerAvatar(name: p.playerName, size: 26),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -957,6 +1035,107 @@ class _DifficultyRatingRow extends ConsumerWidget {
                   );
             },
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Tonight's standings — scores for games since the session started
+// ---------------------------------------------------------------------------
+class _SessionStandingsCard extends StatelessWidget {
+  const _SessionStandingsCard({
+    required this.standings,
+    required this.onNewSession,
+  });
+
+  final List<SessionStanding> standings;
+  final VoidCallback onNewSession;
+
+  static const _medals = ['🥇', '🥈', '🥉'];
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final ranks = SessionScoring.ranks(standings);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: colorScheme.surfaceContainerHigh,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.leaderboard_rounded,
+                  size: 20, color: colorScheme.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  "Tonight's Standings",
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+              TextButton(
+                onPressed: onNewSession,
+                child: const Text('New session'),
+              ),
+            ],
+          ),
+          Text(
+            'Impostor win ${SessionScoring.impostorWinPoints} pts · '
+            'innocent win ${SessionScoring.innocentWinPoints} pt',
+            style: TextStyle(
+              fontSize: 11,
+              color: colorScheme.onSurface.withAlpha(140),
+            ),
+          ),
+          const SizedBox(height: 8),
+          for (final (i, s) in standings.indexed)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 3),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 28,
+                    child: Text(
+                      // Medals only for players who actually scored.
+                      ranks[i] <= _medals.length && s.points > 0
+                          ? _medals[ranks[i] - 1]
+                          : '${ranks[i]}.',
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  ),
+                  PlayerAvatar(name: s.name, size: 26),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(s.name)),
+                  Text(
+                    '${s.wins}/${s.games} won',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colorScheme.onSurface.withAlpha(140),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 48,
+                    child: Text(
+                      '${s.points} pt${s.points == 1 ? '' : 's'}',
+                      textAlign: TextAlign.end,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+              ),
+            ),
         ],
       ),
     );

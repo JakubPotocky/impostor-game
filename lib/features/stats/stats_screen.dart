@@ -1,14 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:impostor/core/streaks.dart';
+import 'package:impostor/core/role_assignment_service.dart' show RoundEndReason;
+import 'package:impostor/core/widgets.dart';
 import 'package:impostor/data/game_history_repository.dart';
+import 'package:impostor/features/stats/player_profile_screen.dart';
 
 /// Screen showing game history and player stats.
-class StatsScreen extends ConsumerWidget {
+class StatsScreen extends ConsumerStatefulWidget {
   const StatsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<StatsScreen> createState() => _StatsScreenState();
+}
+
+class _StatsScreenState extends ConsumerState<StatsScreen> {
+  @override
+  Widget build(BuildContext context) {
     final repo = ref.read(gameHistoryRepositoryProvider);
     final games = repo.getGames();
     final colorScheme = Theme.of(context).colorScheme;
@@ -26,7 +34,7 @@ class StatsScreen extends ConsumerWidget {
             IconButton(
               icon: const Icon(Icons.delete_sweep_rounded),
               tooltip: 'Clear History',
-              onPressed: () => _confirmClear(context, ref),
+              onPressed: () => _confirmClear(context),
             ),
         ],
       ),
@@ -93,7 +101,7 @@ class StatsScreen extends ConsumerWidget {
     return stats;
   }
 
-  void _confirmClear(BuildContext context, WidgetRef ref) {
+  void _confirmClear(BuildContext context) {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -108,11 +116,10 @@ class StatsScreen extends ConsumerWidget {
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(ctx).colorScheme.error,
             ),
-            onPressed: () {
-              ref.read(gameHistoryRepositoryProvider).clearHistory();
+            onPressed: () async {
               Navigator.of(ctx).pop();
-              // Force rebuild.
-              (context as Element).markNeedsBuild();
+              await ref.read(gameHistoryRepositoryProvider).clearHistory();
+              if (mounted) setState(() {});
             },
             child: const Text('Clear'),
           ),
@@ -156,100 +163,89 @@ class _RecentGamesTab extends StatelessWidget {
 
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 4),
+          clipBehavior: Clip.antiAlias,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      margin: const EdgeInsets.only(right: 6),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        game.mode.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w800,
-                          color: colorScheme.onSurface.withAlpha(170),
-                        ),
-                      ),
-                    ),
-                    Icon(
-                      isImpostorWin
-                          ? Icons.warning_amber_rounded
-                          : Icons.emoji_events_rounded,
-                      size: 18,
-                      color: resultColor,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        isImpostorWin ? 'Impostors Won' : 'Innocents Won',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: resultColor,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      _formatDate(game.timestamp),
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: colorScheme.onSurface.withAlpha(100),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(Icons.key_rounded,
-                        size: 14, color: colorScheme.primary),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Word: ${game.word}',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: colorScheme.onSurface.withAlpha(180),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.masks_rounded,
-                        size: 14, color: Colors.red.shade300),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        'Impostors: ${game.impostorNames.join(", ")}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: colorScheme.onSurface.withAlpha(140),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                if (game.winnerNames.isNotEmpty)
+          child: InkWell(
+            onTap: () => _showGameDetails(context, game),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Row(
                     children: [
-                      Icon(Icons.local_fire_department_rounded,
-                          size: 14, color: Colors.orange.shade300),
+                      Container(
+                        margin: const EdgeInsets.only(right: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          game.mode.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            color: colorScheme.onSurface.withAlpha(170),
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        isImpostorWin
+                            ? Icons.warning_amber_rounded
+                            : Icons.emoji_events_rounded,
+                        size: 18,
+                        color: resultColor,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          game.isBlankRound
+                              ? 'Blank Round'
+                              : isImpostorWin
+                                  ? 'Impostors Won'
+                                  : 'Innocents Won',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: resultColor,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        _formatDate(game.timestamp),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: colorScheme.onSurface.withAlpha(100),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.key_rounded,
+                          size: 14, color: colorScheme.primary),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Word: ${game.word}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: colorScheme.onSurface.withAlpha(180),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.masks_rounded,
+                          size: 14, color: Colors.red.shade300),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          'Winners: ${game.winnerNames.join(", ")}',
+                          'Impostors: ${game.impostorNames.join(", ")}',
                           style: TextStyle(
                             fontSize: 12,
                             color: colorScheme.onSurface.withAlpha(140),
@@ -258,24 +254,47 @@ class _RecentGamesTab extends StatelessWidget {
                       ),
                     ],
                   ),
-                if (game.winnerNames.isNotEmpty) const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.people_alt_rounded,
-                        size: 14, color: colorScheme.onSurface.withAlpha(100)),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        '${game.players.length} players',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: colorScheme.onSurface.withAlpha(120),
+                  const SizedBox(height: 4),
+                  if (game.winnerNames.isNotEmpty)
+                    Row(
+                      children: [
+                        Icon(Icons.local_fire_department_rounded,
+                            size: 14, color: Colors.orange.shade300),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Winners: ${game.winnerNames.join(", ")}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: colorScheme.onSurface.withAlpha(140),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  if (game.winnerNames.isNotEmpty) const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.people_alt_rounded,
+                          size: 14,
+                          color: colorScheme.onSurface.withAlpha(100)),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          '${game.players.length} players',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colorScheme.onSurface.withAlpha(120),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      Icon(Icons.chevron_right_rounded,
+                          size: 18,
+                          color: colorScheme.onSurface.withAlpha(100)),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -328,6 +347,8 @@ class _PlayerStatsTab extends StatelessWidget {
                 ),
               ),
             ),
+            onTap: () => Navigator.of(context).push(
+                createSlideRoute(PlayerProfileScreen(playerName: s.name))),
             title: Text(s.name,
                 style: const TextStyle(fontWeight: FontWeight.w600)),
             subtitle: Text(
@@ -371,4 +392,92 @@ class _PlayerStatsTab extends StatelessWidget {
       },
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Game details sheet
+// ---------------------------------------------------------------------------
+void _showGameDetails(BuildContext context, GameRecord game) {
+  final colorScheme = Theme.of(context).colorScheme;
+  final reason = switch (game.endReason) {
+    RoundEndReason.impostorGuessedWord => 'Impostors guessed the word',
+    RoundEndReason.suddenDeath => 'Decided in Sudden Death',
+    RoundEndReason.blankRound => 'Blank round — everyone was the impostor',
+    RoundEndReason.normalVoteResolution => game.impostorsWon
+        ? 'Impostors outnumbered the innocents'
+        : 'Every impostor was voted out',
+  };
+  final innocents =
+      game.players.where((p) => !game.impostorNames.contains(p)).toList();
+
+  Widget row(IconData icon, String label, String value) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 18, color: colorScheme.primary),
+            const SizedBox(width: 10),
+            SizedBox(
+              width: 96,
+              child: Text(label,
+                  style: TextStyle(color: colorScheme.onSurfaceVariant)),
+            ),
+            Expanded(
+              child: Text(value,
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
+            ),
+          ],
+        ),
+      );
+
+  showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (ctx) => SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              game.isBlankRound
+                  ? 'Blank Round'
+                  : game.impostorsWon
+                      ? 'Impostors Won'
+                      : 'Innocents Won',
+              style: Theme.of(ctx).textTheme.headlineSmall,
+            ),
+            Text(reason, style: TextStyle(color: colorScheme.onSurfaceVariant)),
+            const Divider(height: 24),
+            row(
+                Icons.event_rounded,
+                'Played',
+                '${MaterialLocalizations.of(ctx).formatMediumDate(game.timestamp)}, '
+                    '${MaterialLocalizations.of(ctx).formatTimeOfDay(TimeOfDay.fromDateTime(game.timestamp))}'),
+            row(Icons.sports_esports_rounded, 'Mode',
+                '${game.mode[0].toUpperCase()}${game.mode.substring(1)}'),
+            row(Icons.key_rounded, 'Secret word', game.word),
+            if (game.startingPlayerName case final starter?)
+              row(Icons.record_voice_over_rounded, 'Spoke first', starter),
+            if (!game.isBlankRound) ...[
+              row(Icons.masks_rounded, 'Impostors',
+                  game.impostorNames.join(', ')),
+              row(Icons.shield_rounded, 'Innocents',
+                  innocents.isEmpty ? '—' : innocents.join(', ')),
+            ],
+            row(
+                Icons.how_to_vote_rounded,
+                'Voted out',
+                game.killedNames.isEmpty
+                    ? 'Nobody'
+                    : game.killedNames.join(' → ')),
+            if (game.winnerNames.isNotEmpty)
+              row(Icons.emoji_events_rounded, 'Winners',
+                  game.winnerNames.join(', ')),
+          ],
+        ),
+      ),
+    ),
+  );
 }

@@ -1,13 +1,18 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:impostor/core/screen_awake.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:impostor/core/discussion_prompts.dart';
 import 'package:impostor/core/feedback_service.dart';
 import 'package:impostor/features/game_setup/feedback_provider.dart';
 import 'package:impostor/core/motion.dart';
 import 'package:impostor/core/role_assignment_service.dart';
 import 'package:impostor/core/word_difficulty.dart';
 import 'package:impostor/features/end/end_screen.dart';
+import 'package:impostor/features/game_setup/game_setup_notifier.dart';
+import 'package:impostor/features/players/player_avatar_widget.dart';
 
 /// Screen where players vote to eliminate suspects.
 ///
@@ -72,9 +77,22 @@ class _VotingScreenState extends ConsumerState<VotingScreen>
   /// Whether the starter banner has been dismissed.
   bool _starterDismissed = false;
 
-  /// Timer state (only used if timerSeconds > 0).
+  /// Discussion timer (only used if timerSeconds > 0). A single periodic
+  /// timer that is cancelled on pause, so ticks can never double up.
   late int _remainingSeconds;
-  bool _timerRunning = false;
+  late int _timerTotal;
+  Timer? _ticker;
+  bool _timerPaused = false;
+
+  static const int _extraTimeSeconds = 30;
+  static const int _timerWarningSeconds = 10;
+
+  /// Round variants, fixed for the round's duration.
+  late final bool _mysteryImpostors;
+  late final bool _lastChanceGuess;
+
+  /// The discussion prompt currently shown, if any.
+  String? _prompt;
 
   /// Sudden death state.
   bool _suddenDeathActive = false;
@@ -97,7 +115,13 @@ class _VotingScreenState extends ConsumerState<VotingScreen>
   @override
   void initState() {
     super.initState();
+    ScreenAwake.acquire();
+    final setup = ref.read(gameSetupProvider);
+    _mysteryImpostors = setup.mysteryImpostors;
+    _lastChanceGuess = setup.lastChanceGuess;
+
     _remainingSeconds = widget.timerSeconds;
+    _timerTotal = widget.timerSeconds;
     if (widget.timerSeconds > 0) {
       _startTimer();
     }
@@ -140,34 +164,56 @@ class _VotingScreenState extends ConsumerState<VotingScreen>
   }
 
   void _startTimer() {
-    _timerRunning = true;
-    _tick();
+    _ticker?.cancel();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _onTick());
   }
 
-  void _tick() {
-    if (!mounted || !_timerRunning) return;
-    Future.delayed(const Duration(seconds: 1), () {
-      if (!mounted || !_timerRunning) return;
-      setState(() {
-        _remainingSeconds--;
-      });
-      if (_remainingSeconds <= 0) {
-        _timerRunning = false;
-        _feedback.click();
-      } else {
-        _tick();
-      }
+  void _stopTimer() {
+    _ticker?.cancel();
+    _ticker = null;
+  }
+
+  void _onTick() {
+    if (!mounted) return;
+    setState(() => _remainingSeconds--);
+    if (_remainingSeconds == _timerWarningSeconds) _feedback.lightTap();
+    if (_remainingSeconds <= 0) {
+      _stopTimer();
+      _feedback.timeUp();
+    }
+  }
+
+  void _toggleTimerPause() {
+    setState(() => _timerPaused = !_timerPaused);
+    if (_timerPaused) {
+      _stopTimer();
+    } else if (_remainingSeconds > 0) {
+      _startTimer();
+    }
+  }
+
+  void _addTime() {
+    setState(() {
+      _remainingSeconds = max(_remainingSeconds, 0) + _extraTimeSeconds;
+      _timerTotal = max(_timerTotal, _remainingSeconds);
     });
+    // Resume if the clock had run out (but respect an explicit pause).
+    if (_ticker == null && !_timerPaused) _startTimer();
+  }
+
+  void _showNextPrompt() {
+    setState(() => _prompt = DiscussionPrompts.next(_random, previous: _prompt));
   }
 
   @override
   void dispose() {
-    _timerRunning = false;
+    _stopTimer();
     for (final ctrl in _flipControllers.values) {
       ctrl.dispose();
     }
     _suddenDeathCtrl.dispose();
     _suddenDeathPulseCtrl.dispose();
+    ScreenAwake.release();
     super.dispose();
   }
 
@@ -286,7 +332,9 @@ class _VotingScreenState extends ConsumerState<VotingScreen>
     ctrl.forward().then((_) {
       if (!mounted) return;
       final result = _checkWinCondition();
-      if (result != null) {
+      if (result == GameResult.innocentsWin && _lastChanceGuess) {
+        _offerLastChance();
+      } else if (result != null) {
         final reason = _inferEndReason(result);
         _endGame(result, reason, delayed: true);
       } else {
@@ -346,6 +394,46 @@ class _VotingScreenState extends ConsumerState<VotingScreen>
       );
     } else {
       navigate();
+    }
+  }
+
+  /// Last Chance variant: every impostor has been caught, but they win if
+  /// they can name the secret word. The table judges the guess.
+  Future<void> _offerLastChance() async {
+    final impostors = widget.assignments
+        .where((a) => a.isImpostor)
+        .map((a) => a.playerName)
+        .join(', ');
+    final guessed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.hourglass_bottom_rounded),
+        title: const Text('Last Chance!'),
+        content: Text(
+          'All impostors are caught — but $impostors can still win by naming '
+          'the secret word. One guess, no help from the table.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Wrong guess'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red.shade700,
+            ),
+            child: const Text('Guessed it!'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    if (guessed == true) {
+      _endGame(GameResult.impostorsWin, RoundEndReason.impostorGuessedWord);
+    } else {
+      _endGame(GameResult.innocentsWin, RoundEndReason.normalVoteResolution);
     }
   }
 
@@ -480,6 +568,11 @@ class _VotingScreenState extends ConsumerState<VotingScreen>
                                 foregroundColor: Colors.orange.shade300,
                               ),
                             ),
+                          IconButton(
+                            icon: const Icon(Icons.lightbulb_outline_rounded),
+                            tooltip: 'Discussion question',
+                            onPressed: _showNextPrompt,
+                          ),
                           const Spacer(),
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -491,7 +584,12 @@ class _VotingScreenState extends ConsumerState<VotingScreen>
                             child: Text(
                               widget.isBlankRound
                                   ? '$aliveCount alive'
-                                  : '$aliveCount alive · $aliveImpostors/$totalImpostors impostors left',
+                                  : _mysteryImpostors
+                                      ? '$aliveCount alive · '
+                                          '${totalImpostors - aliveImpostors} '
+                                          'impostor${totalImpostors - aliveImpostors == 1 ? '' : 's'} '
+                                          'caught · ? left'
+                                      : '$aliveCount alive · $aliveImpostors/$totalImpostors impostors left',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: colorScheme.onSurfaceVariant,
@@ -564,7 +662,7 @@ class _VotingScreenState extends ConsumerState<VotingScreen>
                               child: LinearProgressIndicator(
                                 value: _remainingSeconds <= 0
                                     ? 0.0
-                                    : _remainingSeconds / widget.timerSeconds,
+                                    : _remainingSeconds / _timerTotal,
                                 minHeight: 8,
                                 backgroundColor:
                                     colorScheme.surfaceContainerHighest,
@@ -576,17 +674,43 @@ class _VotingScreenState extends ConsumerState<VotingScreen>
                               ),
                             ),
                             const SizedBox(height: 4),
-                            Text(
-                              _remainingSeconds <= 0
-                                  ? "Time's up!"
-                                  : '${_remainingSeconds ~/ 60}:${(_remainingSeconds % 60).toString().padLeft(2, '0')}',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: _remainingSeconds <= 30
-                                    ? Colors.red.shade400
-                                    : colorScheme.onSurface.withAlpha(150),
-                              ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                IconButton(
+                                  visualDensity: VisualDensity.compact,
+                                  icon: Icon(_timerPaused
+                                      ? Icons.play_arrow_rounded
+                                      : Icons.pause_rounded),
+                                  tooltip: _timerPaused
+                                      ? 'Resume timer'
+                                      : 'Pause timer',
+                                  onPressed: _remainingSeconds > 0
+                                      ? _toggleTimerPause
+                                      : null,
+                                ),
+                                Semantics(
+                                  liveRegion: _remainingSeconds <= 0,
+                                  child: Text(
+                                    _remainingSeconds <= 0
+                                        ? "Time's up!"
+                                        : '${_remainingSeconds ~/ 60}:${(_remainingSeconds % 60).toString().padLeft(2, '0')}'
+                                            '${_timerPaused ? ' · paused' : ''}',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: _remainingSeconds <= 30
+                                          ? Colors.red.shade400
+                                          : colorScheme.onSurface
+                                              .withAlpha(150),
+                                    ),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: _gameEnding ? null : _addTime,
+                                  child: const Text('+30s'),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -638,6 +762,19 @@ class _VotingScreenState extends ConsumerState<VotingScreen>
                       const SizedBox(height: 12),
                     ] else
                       const SizedBox(height: 8),
+
+                    // Discussion prompt
+                    if (_prompt case final prompt?) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: _PromptCard(
+                          prompt: prompt,
+                          onNext: _showNextPrompt,
+                          onDismiss: () => setState(() => _prompt = null),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
 
                     // Player grid
                     Expanded(
@@ -794,6 +931,20 @@ class _PlayerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final role = assignment.isImpostor ? 'an impostor' : 'innocent';
+    return Semantics(
+      button: !isKilled,
+      enabled: !isKilled,
+      label: isKilled
+          ? '${assignment.playerName}, eliminated, was $role'
+          : '${assignment.playerName}, eliminate',
+      onTap: isKilled ? null : onTap,
+      excludeSemantics: true,
+      child: _buildCard(context),
+    );
+  }
+
+  Widget _buildCard(BuildContext context) {
     if (isKilled && flipController != null) {
       return AnimatedBuilder(
         animation: flipController!,
@@ -844,14 +995,7 @@ class _PlayerCard extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: colorScheme.primaryContainer,
-                child: Icon(
-                  Icons.person_rounded,
-                  color: colorScheme.onPrimaryContainer,
-                ),
-              ),
+              PlayerAvatar(name: assignment.playerName, size: 48),
               const SizedBox(height: 8),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -1003,4 +1147,77 @@ List<String> speakingOrder(List<String> players, {required String starter}) {
   final start = players.indexOf(starter);
   if (start == -1) return [starter];
   return [...players.skip(start), ...players.take(start)];
+}
+
+// ---------------------------------------------------------------------------
+// Discussion prompt card
+// ---------------------------------------------------------------------------
+class _PromptCard extends StatelessWidget {
+  const _PromptCard({
+    required this.prompt,
+    required this.onNext,
+    required this.onDismiss,
+  });
+
+  final String prompt;
+  final VoidCallback onNext;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 4, 6),
+      decoration: BoxDecoration(
+        color: colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.lightbulb_rounded,
+                  size: 18, color: colorScheme.onSecondaryContainer),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    prompt,
+                    style: TextStyle(
+                      color: colorScheme.onSecondaryContainer,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.close_rounded,
+                    size: 18, color: colorScheme.onSecondaryContainer),
+                visualDensity: VisualDensity.compact,
+                tooltip: 'Hide question',
+                onPressed: onDismiss,
+              ),
+            ],
+          ),
+          Text(
+            'Everyone answers about their word — without saying it.',
+            style: TextStyle(
+              fontSize: 11,
+              color: colorScheme.onSecondaryContainer.withAlpha(170),
+            ),
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: onNext,
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: const Text('Another question'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

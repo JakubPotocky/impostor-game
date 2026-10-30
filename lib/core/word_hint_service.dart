@@ -26,3 +26,20 @@ String? pickImpostorHintWord({
 String _normalize(String input) {
   return input.trim().toLowerCase();
 }
+
+/// Picks a decoy for Undercover mode: another word from the same theme, so it
+/// is close enough that the impostor can talk about it convincingly. Unlike
+/// [pickImpostorHintWord] the whole word is kept, multi-word or not.
+String? pickDecoyWord({
+  required List<String> themeWords,
+  required String secretWord,
+  required Random random,
+}) {
+  final secret = _normalize(secretWord);
+  final candidates = {
+    for (final w in themeWords)
+      if (_normalize(w).isNotEmpty && _normalize(w) != secret) w.trim(),
+  }.toList();
+  if (candidates.isEmpty) return null;
+  return candidates[random.nextInt(candidates.length)];
+}

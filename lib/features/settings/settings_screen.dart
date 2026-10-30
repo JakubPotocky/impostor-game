@@ -5,6 +5,7 @@ import 'package:impostor/core/widgets.dart';
 import 'package:impostor/data/theme_word.dart';
 import 'package:impostor/features/game_setup/difficulty_filter_card.dart';
 import 'package:impostor/features/game_setup/game_setup_notifier.dart';
+import 'package:impostor/features/game_setup/theme_selection.dart';
 import 'package:impostor/features/onboarding/onboarding_screen.dart';
 import 'package:impostor/features/settings/backup_screen.dart';
 import 'package:impostor/features/themes/theme_detail_screen.dart';
@@ -94,47 +95,59 @@ class SettingsScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
         children: [
-          // --- Dark / Light mode ---
+          // --- Appearance: system / light / dark ---
           StaggeredFadeIn(
             delay: 0,
             child: SetupCard(
-              icon: setupState.darkMode
-                  ? Icons.dark_mode_rounded
-                  : Icons.light_mode_rounded,
-              iconColor: setupState.darkMode ? Colors.indigo : Colors.amber,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              icon: switch (setupState.themeMode) {
+                ThemeMode.system => Icons.brightness_auto_rounded,
+                ThemeMode.light => Icons.light_mode_rounded,
+                ThemeMode.dark => Icons.dark_mode_rounded,
+              },
+              iconColor: setupState.themeMode == ThemeMode.light
+                  ? Colors.amber
+                  : Colors.indigo,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Appearance',
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w600),
+                  Text(
+                    'Appearance',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    setupState.themeMode == ThemeMode.system
+                        ? "Follows your phone's light/dark setting"
+                        : 'Always ${setupState.themeMode.name}',
+                    style: TextStyle(
+                      color: colorScheme.onSurfaceVariant,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SegmentedButton<ThemeMode>(
+                    segments: const [
+                      ButtonSegment(
+                        value: ThemeMode.system,
+                        label: Text('System'),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        setupState.darkMode ? 'Dark mode' : 'Light mode',
-                        style: TextStyle(
-                          color: colorScheme.onSurfaceVariant,
-                          fontSize: 12,
-                        ),
+                      ButtonSegment(
+                        value: ThemeMode.light,
+                        label: Text('Light'),
+                      ),
+                      ButtonSegment(
+                        value: ThemeMode.dark,
+                        label: Text('Dark'),
                       ),
                     ],
-                  ),
-                  Switch(
-                    value: setupState.darkMode,
-                    onChanged: (v) =>
-                        ref.read(gameSetupProvider.notifier).setDarkMode(v),
-                    thumbIcon: WidgetStateProperty.resolveWith((states) {
-                      if (states.contains(WidgetState.selected)) {
-                        return const Icon(Icons.dark_mode_rounded, size: 18);
-                      }
-                      return const Icon(Icons.light_mode_rounded, size: 18);
-                    }),
+                    selected: {setupState.themeMode},
+                    showSelectedIcon: false,
+                    onSelectionChanged: (selection) => ref
+                        .read(gameSetupProvider.notifier)
+                        .setThemeMode(selection.first),
                   ),
                 ],
               ),
@@ -235,6 +248,21 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 16),
+          StaggeredFadeIn(
+            delay: 1,
+            child: _SwitchCard(
+              icon: Icons.family_restroom_rounded,
+              iconColor: Colors.lightGreen,
+              title: 'Family Mode',
+              subtitle: setupState.familyMode
+                  ? 'Mature themes are hidden and never picked'
+                  : 'Hide mature themes when playing with kids',
+              value: setupState.familyMode,
+              onChanged: (v) =>
+                  ref.read(gameSetupProvider.notifier).setFamilyMode(v),
+            ),
+          ),
+          const SizedBox(height: 16),
 
           // --- Language selector ---
           StaggeredFadeIn(
@@ -318,32 +346,40 @@ class SettingsScreen extends ConsumerWidget {
                         const Center(child: CircularProgressIndicator()),
                     error: (e, _) => Text('Error: $e'),
                     data: (themesState) {
-                      final themeNames = themesState.themeNames;
+                      final themeNames =
+                          selectableThemes(themesState, setupState);
                       if (themeNames.isEmpty) {
                         return const Text('No themes available');
                       }
-                      return Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: themeNames.map((name) {
-                          final isOn = selectedThemes.contains(name);
-                          return FilterChip(
-                            avatar: Icon(themeIcon(name), size: 18),
-                            label: Text(name),
-                            selected: isOn,
-                            onSelected: (_) {
-                              ref
-                                  .read(gameSetupProvider.notifier)
-                                  .toggleTheme(name);
-                            },
-                            selectedColor: colorScheme.primaryContainer,
-                            checkmarkColor: colorScheme.onPrimaryContainer,
-                            labelStyle: TextStyle(
-                              fontWeight:
-                                  isOn ? FontWeight.bold : FontWeight.normal,
-                            ),
-                          );
-                        }).toList(),
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ThemeQuickActions(available: themeNames),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: themeNames.map((name) {
+                              final isOn = selectedThemes.contains(name);
+                              return FilterChip(
+                                avatar: Icon(themeIcon(name), size: 18),
+                                label: Text(name),
+                                selected: isOn,
+                                onSelected: (_) {
+                                  ref
+                                      .read(gameSetupProvider.notifier)
+                                      .toggleTheme(name);
+                                },
+                                selectedColor: colorScheme.primaryContainer,
+                                checkmarkColor: colorScheme.onPrimaryContainer,
+                                labelStyle: TextStyle(
+                                  fontWeight: isOn
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ],
                       );
                     },
                   ),
@@ -399,7 +435,11 @@ class SettingsScreen extends ConsumerWidget {
                         const Center(child: CircularProgressIndicator()),
                     error: (e, _) => Text('Error: $e'),
                     data: (themesState) {
-                      final themeNames = themesState.themeNames;
+                      final themeNames = themesState.themeNames
+                          .where((t) =>
+                              !setupState.familyMode ||
+                              !AppConstants.matureThemes.contains(t))
+                          .toList();
                       return Column(
                         children: [
                           ...themeNames.map((name) {
@@ -621,6 +661,18 @@ class _SwitchCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The whole card toggles (not just the small switch) and is announced as
+    // a single control by screen readers.
+    return MergeSemantics(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => onChanged(!value),
+        child: _card(context),
+      ),
+    );
+  }
+
+  Widget _card(BuildContext context) {
     return SetupCard(
       icon: icon,
       iconColor: iconColor,

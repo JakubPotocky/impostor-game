@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:impostor/core/screen_awake.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:impostor/core/feedback_service.dart';
 import 'package:impostor/features/game_setup/feedback_provider.dart';
@@ -48,6 +49,7 @@ class _TeamModeScreenState extends ConsumerState<TeamModeScreen>
   @override
   void initState() {
     super.initState();
+    ScreenAwake.acquire();
     _reducedMotion = ref.read(gameSetupProvider).reducedMotion;
     _fadeCtrl = AnimationController(
       vsync: this,
@@ -86,6 +88,7 @@ class _TeamModeScreenState extends ConsumerState<TeamModeScreen>
   void dispose() {
     _fadeCtrl.dispose();
     _revealCtrl.dispose();
+    ScreenAwake.release();
     super.dispose();
   }
 

@@ -253,6 +253,30 @@ IconData themeIcon(String name) {
       return Icons.work;
     case 'Objects':
       return Icons.category;
+    case 'Adult':
+      return Icons.work_history_rounded;
+    case 'Kids':
+      return Icons.toys_rounded;
+    case 'Kinky':
+      return Icons.local_fire_department_rounded;
+    case 'Criminal':
+      return Icons.local_police_rounded;
+    case 'College':
+      return Icons.school_rounded;
+    case 'Party':
+      return Icons.celebration_rounded;
+    case 'Internet Culture':
+      return Icons.wifi_rounded;
+    case 'Dating':
+      return Icons.favorite_rounded;
+    case 'Team Pairs':
+      return Icons.compare_arrows_rounded;
+    case 'Places':
+      return Icons.place_rounded;
+    case 'Music':
+      return Icons.music_note_rounded;
+    case 'Nature':
+      return Icons.forest_rounded;
     default:
       return Icons.label;
   }
